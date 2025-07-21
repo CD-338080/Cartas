@@ -483,7 +483,7 @@ const WithdrawPopup: React.FC<WithdrawPopupProps> = ({ onClose, balance, minimum
             <span className="text-[#347928] text-xs font-bold">4</span>
           </div>
           <p className="text-sm text-[#347928] font-medium">
-            You'll receive ${calculateTotalToReceive()} USDT
+            You&apos;ll receive ${calculateTotalToReceive()} USDT
           </p>
         </div>
       </div>

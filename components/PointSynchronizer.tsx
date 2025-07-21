@@ -76,7 +76,7 @@ export function PointSynchronizer() {
         } finally {
             setIsSyncing(false);
         }
-    }, [userTelegramInitData, unsynchronizedPoints, energy, resetUnsynchronizedPoints]);
+    }, [userTelegramInitData, unsynchronizedPoints, energy, resetUnsynchronizedPoints, isSyncing, showToast]);
 
     useEffect(() => {
         if (syncTimeoutRef.current) {

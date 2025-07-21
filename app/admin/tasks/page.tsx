@@ -114,7 +114,7 @@ export default function AdminTasks() {
 
     useEffect(() => {
         fetchTasks();
-    }, []);
+    }, [fetchTasks]);
 
     const onSubmit = async (data: TaskFormData) => {
         try {
