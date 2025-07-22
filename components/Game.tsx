@@ -78,7 +78,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     
     // Animate wheel and ball
     const startTime = Date.now();
-    const duration = 4000; // 4 seconds
+    const duration = 6000; // 6 seconds
     
     const animate = () => {
       const elapsed = Date.now() - startTime;

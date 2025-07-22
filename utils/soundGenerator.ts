@@ -275,59 +275,130 @@ export class SoundGenerator {
     }, 500);
   }
 
-  // Música de fondo simple (loop)
+  // Música de fondo estilo casino (loop animado)
   playBackgroundMusic(volume: number = 0.2) {
     const context = this.ensureAudioContext();
     
-    // Crear una melodía de casino más elaborada
+    // Melodía principal (arpegio mayor y séptima)
     const melody = [
-      { freq: 261, duration: 0.8 }, // C
-      { freq: 329, duration: 0.4 }, // E
-      { freq: 392, duration: 0.8 }, // G
-      { freq: 523, duration: 0.4 }, // C (octava superior)
-      { freq: 392, duration: 0.8 }, // G
-      { freq: 329, duration: 0.4 }, // E
-      { freq: 261, duration: 0.8 }, // C
-      { freq: 196, duration: 0.4 }, // G (octava inferior)
+      { freq: 392, duration: 0.25 }, // G
+      { freq: 523, duration: 0.25 }, // C (octava)
+      { freq: 659, duration: 0.25 }, // E
+      { freq: 784, duration: 0.25 }, // G (octava)
+      { freq: 698, duration: 0.25 }, // F
+      { freq: 880, duration: 0.25 }, // A
+      { freq: 1047, duration: 0.25 }, // C (más agudo)
+      { freq: 784, duration: 0.25 }, // G
+    ];
+
+    // Walking bass (bajo animado)
+    const bass = [
+      { freq: 98, duration: 0.5 }, // G2
+      { freq: 130, duration: 0.5 }, // C3
+      { freq: 146, duration: 0.5 }, // D3
+      { freq: 130, duration: 0.5 }, // C3
+    ];
+
+    // Percusión sintética (hi-hat y bombo)
+    const percussion = [
+      { type: 'kick', time: 0 },
+      { type: 'hihat', time: 0.25 },
+      { type: 'kick', time: 0.5 },
+      { type: 'hihat', time: 0.75 },
+      { type: 'kick', time: 1.0 },
+      { type: 'hihat', time: 1.25 },
+      { type: 'kick', time: 1.5 },
+      { type: 'hihat', time: 1.75 },
     ];
 
     let currentTime = context.currentTime;
-    
-    const playMelody = () => {
-      melody.forEach((note, index) => {
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
+    const melodyDuration = melody.reduce((sum, note) => sum + note.duration, 0);
+    const bassDuration = bass.reduce((sum, note) => sum + note.duration, 0);
+    const loopDuration = Math.max(melodyDuration, bassDuration, 2);
+
+    const playLoop = () => {
+      // Melodía principal (arpegio)
+      let melodyTime = currentTime;
+      melody.forEach((note, i) => {
+        const osc = context.createOscillator();
+        const gain = context.createGain();
         const filter = context.createBiquadFilter();
-
-        oscillator.connect(filter);
-        filter.connect(gainNode);
-        gainNode.connect(context.destination);
-
-        // Configurar filtro para sonido más suave
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(context.destination);
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1000, context.currentTime);
-
-        oscillator.frequency.setValueAtTime(note.freq, context.currentTime);
-        oscillator.type = 'triangle';
-
-        gainNode.gain.setValueAtTime(0, context.currentTime);
-        gainNode.gain.linearRampToValueAtTime(volume * 0.2, context.currentTime + 0.1);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + note.duration);
-
-        oscillator.start(currentTime);
-        oscillator.stop(currentTime + note.duration);
-
-        currentTime += note.duration;
+        filter.frequency.setValueAtTime(1200, melodyTime);
+        osc.frequency.setValueAtTime(note.freq, melodyTime);
+        osc.type = i % 2 === 0 ? 'triangle' : 'square';
+        gain.gain.setValueAtTime(0, melodyTime);
+        gain.gain.linearRampToValueAtTime(volume * 0.18, melodyTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.01, melodyTime + note.duration);
+        osc.start(melodyTime);
+        osc.stop(melodyTime + note.duration);
+        melodyTime += note.duration;
       });
 
-      // Programar la siguiente repetición
+      // Bajo animado
+      let bassTime = currentTime;
+      bass.forEach((note, i) => {
+        const osc = context.createOscillator();
+        const gain = context.createGain();
+        osc.connect(gain);
+        gain.connect(context.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(note.freq, bassTime);
+        gain.gain.setValueAtTime(0, bassTime);
+        gain.gain.linearRampToValueAtTime(volume * 0.13, bassTime + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.01, bassTime + note.duration);
+        osc.start(bassTime);
+        osc.stop(bassTime + note.duration);
+        bassTime += note.duration;
+      });
+
+      // Percusión sintética
+      percussion.forEach((hit) => {
+        const t = currentTime + hit.time;
+        if (hit.type === 'kick') {
+          // Bombo
+          const osc = context.createOscillator();
+          const gain = context.createGain();
+          osc.connect(gain);
+          gain.connect(context.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(120, t);
+          osc.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+          gain.gain.setValueAtTime(volume * 0.18, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
+          osc.start(t);
+          osc.stop(t + 0.12);
+        } else if (hit.type === 'hihat') {
+          // Hi-hat
+          const bufferSize = 128;
+          const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+          const noise = context.createBufferSource();
+          noise.buffer = buffer;
+          const gain = context.createGain();
+          gain.gain.setValueAtTime(volume * 0.08, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.04);
+          noise.connect(gain);
+          gain.connect(context.destination);
+          noise.start(t);
+          noise.stop(t + 0.04);
+        }
+      });
+
+      // Loop
       setTimeout(() => {
         currentTime = context.currentTime;
-        playMelody();
-      }, (melody.reduce((sum, note) => sum + note.duration, 0)) * 1000);
+        playLoop();
+      }, loopDuration * 1000);
     };
 
-    playMelody();
+    playLoop();
   }
 
   // Sonido de recarga de energía
