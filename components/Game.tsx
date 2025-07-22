@@ -74,7 +74,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     
     // Calculate final positions
     const finalWheelRotation = Math.random() * 360 + 720; // 2-3 full rotations
-    const finalBallPosition = 360 * 5; // 5 vueltas completas
+    const finalBallPosition = 360 * 5 + Math.random() * 360; // 5 vueltas completas más un ángulo aleatorio
     
     // Animate wheel and ball
     const startTime = Date.now();
