@@ -45,6 +45,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
   const [lastResult, setLastResult] = useState<'red' | 'black' | null>(null);
   const [lastWin, setLastWin] = useState(false);
   const [ballPosition, setBallPosition] = useState(0);
+  const [lastBallEndPosition, setLastBallEndPosition] = useState(0);
   const [wheelRotation, setWheelRotation] = useState(0);
 
   const {
@@ -74,7 +75,9 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     
     // Calculate final positions
     const finalWheelRotation = Math.random() * 360 + 720; // 2-3 full rotations
-    const finalBallPosition = 360 * 5 + Math.random() * 360; // 5 vueltas completas más un ángulo aleatorio
+    const randomOffset = Math.random() * 360;
+    const ballSpins = 360 * 5;
+    const finalBallPosition = lastBallEndPosition + ballSpins + randomOffset; // Empieza donde terminó la última vez
     
     // Animate wheel and ball
     const startTime = Date.now();
@@ -94,7 +97,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       // Ball movement with bouncing effect
       const ballProgress = Math.min(progress * 1.2, 1);
       const ballEaseOut = 1 - Math.pow(1 - ballProgress, 2);
-      const currentBallPosition = finalBallPosition * ballEaseOut;
+      const currentBallPosition = lastBallEndPosition + (finalBallPosition - lastBallEndPosition) * ballEaseOut;
       setBallPosition(currentBallPosition);
       
       // Play ball bounce sound at certain intervals
@@ -130,7 +133,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
           setShowResult(false);
           setSelectedColor(null);
           setResult(null);
-          setBallPosition(0);
+          setLastBallEndPosition(finalBallPosition % 360); // Guardar la posición final normalizada
           setWheelRotation(0);
         }, 3000);
       }
