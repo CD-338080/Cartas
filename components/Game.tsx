@@ -29,6 +29,8 @@ import TopInfoSection from '@/components/TopInfoSection';
 import { LEVELS } from '@/utils/consts';
 import { triggerHapticFeedback } from '@/utils/ui';
 import SendMessage from '@/components/popups/SendMessage';
+import { useSound, SOUND_EFFECTS } from '@/utils/useSound';
+import AudioController from '@/components/AudioController';
 
 interface GameProps {
   currentView: string;
@@ -56,11 +58,16 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     updateLastClickTimestamp,
   } = useGameStore();
 
+  const { playSound } = useSound();
+
   const spinRoulette = async () => {
     if (isSpinning || !selectedColor) return;
     
     setIsSpinning(true);
     triggerHapticFeedback(window);
+    
+    // Play roulette spin sound
+    playSound(SOUND_EFFECTS.ROULETTE_SPIN, { volume: 0.6 });
     
     // Generate final result
     const finalResult = Math.random() > 0.5 ? 'red' : 'black';
@@ -90,6 +97,11 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       const currentBallPosition = finalBallPosition * ballEaseOut;
       setBallPosition(currentBallPosition);
       
+      // Play ball bounce sound at certain intervals
+      if (progress > 0.3 && progress < 0.8 && Math.floor(progress * 20) % 3 === 0) {
+        playSound(SOUND_EFFECTS.ROULETTE_BALL_BOUNCE, { volume: 0.2 });
+      }
+      
       // Show result during last 500ms
       if (progress > 0.875) {
         setResult(finalResult);
@@ -105,9 +117,13 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
         setLastWin(isWin);
         setShowResult(true);
         
+        // Play win/lose sound
         if (isWin) {
+          playSound(SOUND_EFFECTS.ROULETTE_WIN, { volume: 0.8 });
           clickTriggered();
           updateLastClickTimestamp();
+        } else {
+          playSound(SOUND_EFFECTS.ROULETTE_LOSE, { volume: 0.5 });
         }
         
         setTimeout(() => {
@@ -135,6 +151,11 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     <div className="bg-gradient-to-b from-[#2a9d8f] to-[#3eb489] flex justify-center min-h-screen">
       <div className="w-full text-white h-screen font-bold flex flex-col max-w-xl">
         <TopInfoSection isGamePage={true} setCurrentView={setCurrentView} />
+        
+        {/* Audio Controller */}
+        <div className="absolute top-4 right-4 z-10">
+          <AudioController />
+        </div>
 
         <div className="flex-grow mt-4 bg-gradient-to-r from-[#264653] to-[#2a9d8f] rounded-t-[48px] relative top-glow z-0 shadow-lg">
           <div className="mt-[2px] bg-gradient-to-b from-[#2a9d8f] to-[#3eb489] rounded-t-[46px] h-full overflow-y-auto no-scrollbar">
@@ -260,6 +281,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                       if (!isSpinning) {
                         setSelectedColor('red');
                         triggerHapticFeedback(window);
+                        playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
                       }
                     }}
                     className={`flex-1 py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 ${
@@ -277,6 +299,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                       if (!isSpinning) {
                         setSelectedColor('black');
                         triggerHapticFeedback(window);
+                        playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
                       }
                     }}
                     className={`flex-1 py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 ${
@@ -292,7 +315,10 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
 
                 {/* Spin Button */}
                 <button
-                  onClick={spinRoulette}
+                  onClick={() => {
+                    spinRoulette();
+                    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.5 });
+                  }}
                   disabled={isSpinning || !selectedColor}
                   className={`w-full py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 flex items-center justify-center ${
                     isSpinning 
@@ -359,6 +385,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                 <button
                   onClick={() => {
                     triggerHapticFeedback(window);
+                    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
                     setCurrentView('airdrop');
                     localStorage.setItem('scrollToTransactions', 'true');
                   }}
