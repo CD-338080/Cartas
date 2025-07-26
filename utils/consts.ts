@@ -133,8 +133,8 @@ export const MAX_ENERGY_REFILLS_PER_DAY = 6;
 export const ENERGY_REFILL_COOLDOWN = 60 * 60 * 1000; // 1 hour in milliseconds
 export const TASK_WAIT_TIME = 60 * 60 * 1000; // 1 hour in milliseconds
 
-export const REFERRAL_BONUS_BASE = 15;
-export const REFERRAL_BONUS_PREMIUM = 15;
+export const REFERRAL_BONUS_BASE = 25;
+export const REFERRAL_BONUS_PREMIUM = 25;
 
 
 // Multitap

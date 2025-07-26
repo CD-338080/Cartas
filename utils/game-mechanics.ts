@@ -37,8 +37,6 @@ export interface InitialGameState {
   mineLevelIndex: number;
   profitPerHour: number;
   tonWalletAddress: string | null;
-  lastBonusClaimTimestamp: number;
-  nextBonusAvailableTimestamp: number;
 }
 
 export interface GameState extends InitialGameState {
@@ -232,6 +230,4 @@ export const useGameStore = createGameStore({
   mineLevelIndex: 0,
   profitPerHour: 0,
   tonWalletAddress: null,
-  lastBonusClaimTimestamp: 0,
-  nextBonusAvailableTimestamp: 0,
 });

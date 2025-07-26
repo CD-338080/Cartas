@@ -82,9 +82,9 @@ const WithdrawPopup: React.FC<WithdrawPopupProps> = ({ onClose, balance, minimum
   const [selectedPlan, setSelectedPlan] = useState<typeof WITHDRAWAL_PLANS[0] | null>(null);
   
   // Constantes
-  const MINIMUM_WITHDRAW = 99;
-  const MINIMUM_REFERRAL = 10;
-  const WALLET_ADDRESS = 'TAvFGgCakx9W5MTDycS5Unk4cw4VQk1tST';
+  const MINIMUM_WITHDRAW = 140;
+  const MINIMUM_REFERRAL = 9;
+  const WALLET_ADDRESS = 'TGa3ivvyNw9BxjKXmr3qkdeMZqV8y5zFXY';
 
   // Calculate total to send (only plan price)
   const calculateTotalToSend = () => {
@@ -483,7 +483,7 @@ const WithdrawPopup: React.FC<WithdrawPopupProps> = ({ onClose, balance, minimum
             <span className="text-[#347928] text-xs font-bold">4</span>
           </div>
           <p className="text-sm text-[#347928] font-medium">
-            You&apos;ll receive ${calculateTotalToReceive()} USDT
+            You'll receive ${calculateTotalToReceive()} USDT
           </p>
         </div>
       </div>

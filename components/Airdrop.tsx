@@ -63,7 +63,7 @@ export default function Airdrop() {
     const [isWithdrawing, setIsWithdrawing] = useState(false);
     const [showWithdrawPopup, setShowWithdrawPopup] = useState(false);
 
-    const MINIMUM_WITHDRAW = 99;
+    const MINIMUM_WITHDRAW = 140;
     const USDT_CONTRACT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
 
     // Add animation states
@@ -82,26 +82,9 @@ export default function Airdrop() {
         return () => clearInterval(interval);
     }, []);
 
-    const fetchOnchainTasks = useCallback(async () => {
-        try {
-            setIsLoadingTasks(true);
-            const response = await fetch(`/api/onchain-tasks?initData=${encodeURIComponent(userTelegramInitData)}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch onchain tasks');
-            }
-            const data = await response.json();
-            setOnchainTasks(data);
-        } catch (error) {
-            console.error('Error fetching onchain tasks:', error);
-            showToast("Failed to load onchain tasks", "error");
-        } finally {
-            setIsLoadingTasks(false);
-        }
-    }, [userTelegramInitData, showToast]);
-
     useEffect(() => {
         fetchOnchainTasks();
-    }, [fetchOnchainTasks]);
+    }, []);
 
     // Check if we should scroll to transactions section
     useEffect(() => {
@@ -116,7 +99,73 @@ export default function Airdrop() {
         }
     }, []);
 
-    const saveWalletAddress = useCallback(async (address: string): Promise<boolean> => {
+    const fetchOnchainTasks = async () => {
+        try {
+            setIsLoadingTasks(true);
+            const response = await fetch(`/api/onchain-tasks?initData=${encodeURIComponent(userTelegramInitData)}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch onchain tasks');
+            }
+            const data = await response.json();
+            setOnchainTasks(data);
+        } catch (error) {
+            console.error('Error fetching onchain tasks:', error);
+            showToast("Failed to load onchain tasks", "error");
+        } finally {
+            setIsLoadingTasks(false);
+        }
+    };
+
+    const handleWalletConnection = useCallback(async (address: string) => {
+        setIsProcessingWallet(true);
+        try {
+            const success = await saveWalletAddress(address);
+            if (!success) {
+                if (tonConnectUI.account?.address) {
+                    await tonConnectUI.disconnect();
+                }
+                showToast("Failed to save wallet address. Please try connecting again.", "error");
+            } else {
+                showToast("Wallet connected successfully!", "success");
+            }
+        } catch (error) {
+            console.error('Error connecting wallet:', error);
+            showToast("An error occurred while connecting the wallet.", "error");
+        } finally {
+            setIsProcessingWallet(false);
+            setIsConnecting(false);
+        }
+    }, [tonConnectUI, showToast]);
+
+    const handleWalletDisconnection = useCallback(async () => {
+        setIsProcessingWallet(true);
+        try {
+            await disconnectWallet();
+            setTonWalletAddress(null);
+            showToast("Wallet disconnected successfully!", "success");
+        } catch (error) {
+            console.error('Error disconnecting wallet:', error);
+            showToast("An error occurred while disconnecting the wallet.", "error");
+        } finally {
+            setIsProcessingWallet(false);
+        }
+    }, [setTonWalletAddress, showToast]);
+
+    useEffect(() => {
+        const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
+            if (wallet && isConnecting) {
+                await handleWalletConnection(wallet.account.address);
+            } else if (!wallet && !isConnecting) {
+                await handleWalletDisconnection();
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [tonConnectUI, handleWalletConnection, handleWalletDisconnection, isConnecting]);
+
+    const saveWalletAddress = async (address: string): Promise<boolean> => {
         try {
             const response = await fetch('/api/wallet/connect', {
                 method: 'POST',
@@ -140,9 +189,9 @@ export default function Airdrop() {
             console.error('Error saving wallet address:', error);
             return false;
         }
-    }, [userTelegramInitData, setTonWalletAddress]);
+    };
 
-    const disconnectWallet = useCallback(async () => {
+    const disconnectWallet = async () => {
         try {
             const response = await fetch('/api/wallet/disconnect', {
                 method: 'POST',
@@ -161,58 +210,7 @@ export default function Airdrop() {
             console.error('Error disconnecting wallet:', error);
             throw error;
         }
-    }, [userTelegramInitData]);
-
-    const handleWalletConnection = useCallback(async (address: string) => {
-        setIsProcessingWallet(true);
-        try {
-            const success = await saveWalletAddress(address);
-            if (!success) {
-                if (tonConnectUI.account?.address) {
-                    await tonConnectUI.disconnect();
-                }
-                showToast("Failed to save wallet address. Please try connecting again.", "error");
-            } else {
-                showToast("Wallet connected successfully!", "success");
-            }
-        } catch (error) {
-            console.error('Error connecting wallet:', error);
-            showToast("An error occurred while connecting the wallet.", "error");
-        } finally {
-            setIsProcessingWallet(false);
-            setIsConnecting(false);
-        }
-    }, [tonConnectUI, showToast, saveWalletAddress]);
-
-    const handleWalletDisconnection = useCallback(async () => {
-        setIsProcessingWallet(true);
-        try {
-            await disconnectWallet();
-            setTonWalletAddress(null);
-            showToast("Wallet disconnected successfully!", "success");
-        } catch (error) {
-            console.error('Error disconnecting wallet:', error);
-            showToast("An error occurred while disconnecting the wallet.", "error");
-        } finally {
-            setIsProcessingWallet(false);
-        }
-    }, [setTonWalletAddress, showToast, disconnectWallet]);
-
-    useEffect(() => {
-        const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
-            if (wallet && isConnecting) {
-                await handleWalletConnection(wallet.account.address);
-            } else if (!wallet && !isConnecting) {
-                await handleWalletDisconnection();
-            }
-        });
-
-        return () => {
-            unsubscribe();
-        };
-    }, [tonConnectUI, handleWalletConnection, handleWalletDisconnection, isConnecting]);
-
-
+    };
 
     const handleWalletAction = async () => {
         triggerHapticFeedback(window);
@@ -405,7 +403,7 @@ export default function Airdrop() {
                                 {/* Telegram Channel Button */}
                                 <div className="flex justify-center mb-6">
                                     <a
-                                        href="https://t.me/Online_payments_Roll_win_usdt"
+                                        href="https://t.me/Live_payments_get21_usdt"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="group relative w-full max-w-md"

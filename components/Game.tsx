@@ -28,25 +28,36 @@ import Snowflake from '@/icons/Snowflake';
 import TopInfoSection from '@/components/TopInfoSection';
 import { LEVELS } from '@/utils/consts';
 import { triggerHapticFeedback } from '@/utils/ui';
-import SendMessage from '@/components/popups/SendMessage';
-import { useSound, SOUND_EFFECTS } from '@/utils/useSound';
-import AudioController from '@/components/AudioController';
+import Card from '@/components/Card';
 
 interface GameProps {
   currentView: string;
   setCurrentView: (view: string) => void;
 }
 
+interface CardType {
+  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  value: string;
+}
+
+type GameState = 'betting' | 'playing' | 'dealer' | 'result';
+
 export default function Game({ currentView, setCurrentView }: GameProps) {
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<'red' | 'black' | null>(null);
-  const [result, setResult] = useState<'red' | 'black' | null>(null);
+  const [gameState, setGameState] = useState<GameState>('betting');
+  const [playerHand, setPlayerHand] = useState<CardType[]>([]);
+  const [dealerHand, setDealerHand] = useState<CardType[]>([]);
+  const [deck, setDeck] = useState<CardType[]>([]);
+  const [playerScore, setPlayerScore] = useState(0);
+  const [dealerScore, setDealerScore] = useState(0);
+  const [gameResult, setGameResult] = useState<'win' | 'lose' | 'draw' | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [lastResult, setLastResult] = useState<'red' | 'black' | null>(null);
-  const [lastWin, setLastWin] = useState(false);
-  const [ballPosition, setBallPosition] = useState(0);
-  const [lastBallEndPosition, setLastBallEndPosition] = useState(0);
-  const [wheelRotation, setWheelRotation] = useState(0);
+  const [isDealing, setIsDealing] = useState(false);
+  const [cardAnimations, setCardAnimations] = useState<{player: boolean[], dealer: boolean[]}>({player: [], dealer: []});
+  const [dealingCards, setDealingCards] = useState<{player: CardType[], dealer: CardType[]}>({player: [], dealer: []});
+  const [showDealingCard, setShowDealingCard] = useState(false);
+  const [dealingCardPosition, setDealingCardPosition] = useState({x: 0, y: 0});
+  const [dealerCompleteHand, setDealerCompleteHand] = useState<CardType[]>([]);
+  const [flyingCard, setFlyingCard] = useState<{show: boolean, card: CardType | null, target: 'player' | 'dealer'}>({show: false, card: null, target: 'player'});
 
   const {
     points,
@@ -59,116 +70,345 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     updateLastClickTimestamp,
   } = useGameStore();
 
-  const { playSound } = useSound();
-
-  const spinRoulette = async () => {
-    if (isSpinning || !selectedColor) return;
+  // Create a standard 52-card deck
+  const createDeck = (): CardType[] => {
+    const suits: ('hearts' | 'diamonds' | 'clubs' | 'spades')[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const deck: CardType[] = [];
     
-    setIsSpinning(true);
-    triggerHapticFeedback(window);
-    
-    // Play roulette spin sound
-    playSound(SOUND_EFFECTS.ROULETTE_SPIN, { volume: 0.6 });
-    
-    // Generate final result
-    const finalResult = Math.random() > 0.5 ? 'red' : 'black';
-    
-    // Calculate final positions
-    const finalWheelRotation = Math.random() * 360 + 720; // 2-3 full rotations
-    const randomOffset = Math.random() * 360;
-    const ballSpins = 360 * 5;
-    const finalBallPosition = lastBallEndPosition + ballSpins + randomOffset; // Empieza donde terminó la última vez
-    
-    // Animate wheel and ball
-    const startTime = Date.now();
-    const duration = 5000; // 5 seconds
-    
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // Easing function for realistic deceleration
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      
-      // Wheel rotation with deceleration
-      const currentWheelRotation = finalWheelRotation * easeOut;
-      setWheelRotation(currentWheelRotation);
-      
-      // Ball movement with bouncing effect
-      const ballProgress = Math.min(progress * 1.2, 1);
-      const ballEaseOut = 1 - Math.pow(1 - ballProgress, 2);
-      const currentBallPosition = lastBallEndPosition + (finalBallPosition - lastBallEndPosition) * ballEaseOut;
-      setBallPosition(currentBallPosition);
-      
-      // Play ball bounce sound at certain intervals
-      if (progress > 0.3 && progress < 0.8 && Math.floor(progress * 20) % 3 === 0) {
-        playSound(SOUND_EFFECTS.ROULETTE_BALL_BOUNCE, { volume: 0.2 });
+    for (const suit of suits) {
+      for (const value of values) {
+        deck.push({ suit, value });
       }
-      
-      // Show result during last 500ms
-      if (progress > 0.875) {
-        setResult(finalResult);
-      }
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        // Animation complete
-        setIsSpinning(false);
-        setLastResult(finalResult);
-        const isWin = selectedColor === finalResult;
-        setLastWin(isWin);
-        setShowResult(true);
-        
-        // Play win/lose sound
-        if (isWin) {
-          playSound(SOUND_EFFECTS.ROULETTE_WIN, { volume: 0.8 });
-          clickTriggered();
-          updateLastClickTimestamp();
-        } else {
-          playSound(SOUND_EFFECTS.ROULETTE_LOSE, { volume: 0.5 });
-        }
-        
-        setTimeout(() => {
-          setShowResult(false);
-          setSelectedColor(null);
-          setResult(null);
-          setLastBallEndPosition(finalBallPosition % 360); // Guardar la posición final normalizada
-          setWheelRotation(0);
-        }, 3000);
-      }
-    };
+    }
     
-    requestAnimationFrame(animate);
+    return shuffleDeck(deck);
   };
 
-  // Roulette wheel segments (red and black alternating)
-  const wheelSegments = [
-    'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black',
-    'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black',
-    'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black',
-    'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black', 'red', 'black'
-  ];
+  // Shuffle the deck
+  const shuffleDeck = (deck: CardType[]): CardType[] => {
+    const shuffled = [...deck];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // Test function to verify card calculations
+  const testCardCalculation = () => {
+    console.log('=== TESTING CARD CALCULATIONS ===');
+    
+    // Test your example
+    const testHand1 = [
+      { suit: 'hearts' as const, value: '8' },
+      { suit: 'diamonds' as const, value: '4' },
+      { suit: 'clubs' as const, value: 'A' },
+      { suit: 'spades' as const, value: '7' }
+    ];
+    
+    const result1 = calculateHandValue(testHand1);
+    console.log('Test hand 1 (8,4,A,7):', result1);
+    
+    // Test player hand
+    const testHand2 = [
+      { suit: 'hearts' as const, value: 'K' },
+      { suit: 'diamonds' as const, value: 'Q' }
+    ];
+    
+    const result2 = calculateHandValue(testHand2);
+    console.log('Test hand 2 (K,Q):', result2);
+    
+    console.log('=== END TEST ===');
+  };
+
+  // Calculate hand value
+  const calculateHandValue = (hand: CardType[]): number => {
+    let value = 0;
+    let aces = 0;
+
+    for (const card of hand) {
+      if (card.value === 'A') {
+        aces += 1;
+      } else if (['K', 'Q', 'J'].includes(card.value)) {
+        value += 10;
+      } else {
+        value += parseInt(card.value);
+      }
+    }
+
+    // Add aces
+    for (let i = 0; i < aces; i++) {
+      if (value + 11 <= 21) {
+        value += 11;
+      } else {
+        value += 1;
+      }
+    }
+
+    console.log('Hand:', hand.map(c => c.value), 'Value:', value, 'Aces:', aces);
+    return value;
+  };
+
+  // Deal initial cards with professional animations
+  const dealInitialCards = () => {
+    setIsDealing(true);
+    triggerHapticFeedback(window);
+    
+    // Test card calculations
+    testCardCalculation();
+    
+    const newDeck = createDeck();
+    const playerCards = [newDeck[0], newDeck[2]];
+    const dealerCards = [newDeck[1], newDeck[3]];
+    
+    console.log('Dealing cards:');
+    console.log('Player cards:', playerCards.map(c => c.value));
+    console.log('Dealer cards:', dealerCards.map(c => c.value));
+    
+    // Clear hands and start fresh
+    setPlayerHand([]);
+    setDealerHand([]);
+    setDealerCompleteHand([]);
+    setCardAnimations({player: [false, false], dealer: [false, false]});
+    
+    // Deal first card to player
+    setTimeout(() => {
+      setPlayerHand([playerCards[0]]);
+      setCardAnimations(prev => ({...prev, player: [true, false]}));
+      triggerHapticFeedback(window);
+    }, 200);
+    
+    // Deal first card to dealer
+    setTimeout(() => {
+      setDealerHand([dealerCards[0]]);
+      setDealerCompleteHand([dealerCards[0]]);
+      setCardAnimations(prev => ({...prev, dealer: [true, false]}));
+      triggerHapticFeedback(window);
+    }, 500);
+    
+    // Deal second card to player
+    setTimeout(() => {
+      setPlayerHand(playerCards);
+      setCardAnimations(prev => ({...prev, player: [true, true]}));
+      triggerHapticFeedback(window);
+    }, 800);
+    
+    // Deal second card to dealer (hidden) - add to complete hand but not visible hand
+    setTimeout(() => {
+      setDealerCompleteHand(dealerCards);
+      // Keep dealerHand as only the first card (visible)
+      setCardAnimations(prev => ({...prev, dealer: [true, false]}));
+      triggerHapticFeedback(window);
+    }, 1100);
+    
+    // Set final state
+    setTimeout(() => {
+      setDeck(newDeck.slice(4));
+      const playerValue = calculateHandValue(playerCards);
+      const dealerValue = calculateHandValue([dealerCards[0]]);
+      setPlayerScore(playerValue);
+      setDealerScore(dealerValue);
+      setIsDealing(false);
+      setGameState('playing');
+    }, 1400);
+  };
+
+  // Hit (draw a card) with animation
+  const hit = () => {
+    if (gameState !== 'playing' || deck.length === 0) return;
+    
+    triggerHapticFeedback(window);
+    const newCard = deck[0];
+    const newPlayerHand = [...playerHand, newCard];
+    const newDeck = deck.slice(1);
+    
+    // Show flying card animation
+    setFlyingCard({show: true, card: newCard, target: 'player'});
+    
+    // Animate card dealing
+    setCardAnimations(prev => ({
+      ...prev, 
+      player: [...prev.player, false]
+    }));
+    
+    setTimeout(() => {
+      setFlyingCard({show: false, card: null, target: 'player'});
+      setPlayerHand(newPlayerHand);
+      setDeck(newDeck);
+      setCardAnimations(prev => ({
+        ...prev, 
+        player: [...prev.player.slice(0, -1), true]
+      }));
+      
+      const newScore = calculateHandValue(newPlayerHand);
+      setPlayerScore(newScore);
+      
+      // Check for bust
+      if (newScore > 21) {
+        setTimeout(() => {
+          endGame('lose');
+        }, 800);
+      }
+    }, 600);
+  };
+
+  // Stand (end player's turn)
+  const stand = () => {
+    if (gameState !== 'playing') return;
+    
+    triggerHapticFeedback(window);
+    setGameState('dealer');
+    playDealerTurn();
+  };
+
+  // Dealer's turn with animations
+  const playDealerTurn = () => {
+    let currentDealerHand = [...dealerCompleteHand];
+    let currentDeck = [...deck];
+    
+    console.log('Dealer turn starts with:', currentDealerHand.map(c => c.value));
+    
+    // First, reveal the hidden card with animation
+    setTimeout(() => {
+      setDealerHand(dealerCompleteHand);
+      setCardAnimations(prev => ({
+        ...prev,
+        dealer: prev.dealer.map(() => true)
+      }));
+    }, 500);
+    
+    const dealerTurn = () => {
+      const dealerValue = calculateHandValue(currentDealerHand);
+      console.log('Dealer hand:', currentDealerHand.map(c => c.value), 'Value:', dealerValue);
+      
+      if (dealerValue >= 17) {
+        // Dealer stands
+        setDealerHand(currentDealerHand);
+        setDealerScore(dealerValue);
+        console.log('Dealer stands with:', dealerValue);
+        setTimeout(() => {
+          determineWinner(dealerValue);
+        }, 800);
+        return;
+      }
+      
+      // Dealer hits with animation
+      const newCard = currentDeck[0];
+      currentDealerHand = [...currentDealerHand, newCard];
+      currentDeck = currentDeck.slice(1);
+      
+      console.log('Dealer hits, new card:', newCard.value);
+      
+      // Show flying card animation for dealer
+      setFlyingCard({show: true, card: newCard, target: 'dealer'});
+      
+      // Animate dealer card dealing
+      setCardAnimations(prev => ({
+        ...prev, 
+        dealer: [...prev.dealer, false]
+      }));
+      
+      setTimeout(() => {
+        setFlyingCard({show: false, card: null, target: 'dealer'});
+        setDealerHand(currentDealerHand);
+        setDeck(currentDeck);
+        setCardAnimations(prev => ({
+          ...prev, 
+          dealer: [...prev.dealer.slice(0, -1), true]
+        }));
+        
+        const newDealerValue = calculateHandValue(currentDealerHand);
+        setDealerScore(newDealerValue);
+        console.log('Dealer new value:', newDealerValue);
+        
+        if (newDealerValue > 21) {
+          // Dealer busts
+          console.log('DEALER BUSTS! Player wins!');
+          setTimeout(() => {
+            endGame('win');
+          }, 1200);
+          return;
+        }
+        
+        // Continue dealer's turn
+        setTimeout(dealerTurn, 1500);
+      }, 600);
+    };
+    
+    setTimeout(dealerTurn, 1500);
+  };
+
+  // Determine winner
+  const determineWinner = (finalDealerScore: number) => {
+    console.log('Determining winner:');
+    console.log('Player score:', playerScore);
+    console.log('Dealer score:', finalDealerScore);
+    
+    if (playerScore > 21) {
+      console.log('Player busts - Dealer wins');
+      endGame('lose');
+    } else if (finalDealerScore > 21) {
+      console.log('Dealer busts - Player wins');
+      endGame('win');
+    } else if (playerScore > finalDealerScore) {
+      console.log('Player wins with higher score');
+      endGame('win');
+    } else if (playerScore < finalDealerScore) {
+      console.log('Dealer wins with higher score');
+      endGame('lose');
+    } else {
+      console.log('Draw - same scores');
+      endGame('draw');
+    }
+  };
+
+  // End game
+  const endGame = (result: 'win' | 'lose' | 'draw') => {
+    setGameResult(result);
+    setShowResult(true);
+    setGameState('result');
+    
+    if (result === 'win') {
+      clickTriggered();
+      updateLastClickTimestamp();
+    }
+    
+    setTimeout(() => {
+      setShowResult(false);
+    }, 3000);
+  };
+
+  // Play again
+  const playAgain = () => {
+    triggerHapticFeedback(window);
+    setGameState('betting');
+    setPlayerHand([]);
+    setDealerHand([]);
+    setDealerCompleteHand([]);
+    setPlayerScore(0);
+    setDealerScore(0);
+    setGameResult(null);
+    setShowResult(false);
+    setIsDealing(false);
+    setCardAnimations({player: [], dealer: []});
+    setFlyingCard({show: false, card: null, target: 'player'});
+  };
 
   return (
-    <div className="bg-gradient-to-b from-[#2a9d8f] to-[#3eb489] flex justify-center min-h-screen">
-      <div className="w-full text-white h-screen font-bold flex flex-col max-w-xl">
+    <div className="bg-gradient-to-b from-[#0f5132] to-[#90ef89] flex justify-center min-h-screen">
+      <div className="w-full text-white font-bold flex flex-col max-w-xl">
         <TopInfoSection isGamePage={true} setCurrentView={setCurrentView} />
-        
-        {/* Audio Controller */}
-        <div className="absolute top-4 right-4 z-10">
-          <AudioController />
-        </div>
 
-        <div className="flex-grow mt-4 bg-gradient-to-r from-[#264653] to-[#2a9d8f] rounded-t-[48px] relative top-glow z-0 shadow-lg">
-          <div className="mt-[2px] bg-gradient-to-b from-[#2a9d8f] to-[#3eb489] rounded-t-[46px] h-full overflow-y-auto no-scrollbar">
+        <div className="flex-grow mt-4 bg-gradient-to-r from-[#0f5132] to-[#90ef89] rounded-t-[48px] relative top-glow z-0 shadow-lg">
+          <div className="mt-[2px] bg-gradient-to-b from-[#90ef89] to-[#20c997] rounded-t-[46px] overflow-y-auto no-scrollbar">
             <div className="px-4 pt-1 pb-24">
 
               {/* Points Display */}
               <div className="px-4 mt-4 flex justify-center">
                 <div className="px-6 py-3 bg-white/10 backdrop-blur-sm rounded-xl flex items-center space-x-3 shadow-inner">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                    <span className="text-[#2a9d8f] text-2xl font-black">₮</span>
+                    <span className="text-[#90ef89] text-2xl font-black">₮</span>
                   </div>
                   <p className="text-4xl text-white font-extrabold" suppressHydrationWarning>
                     {Math.floor(pointsBalance).toLocaleString()} USDT
@@ -183,212 +423,213 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                 <p>{gameLevelIndex + 1} <span className="text-white/60">/ {LEVELS.length}</span></p>
               </div>
 
-              {/* Professional Casino Roulette */}
-              <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                <h2 className="text-2xl font-bold text-center mb-4 bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] bg-clip-text text-transparent">
-                  Casino Roulette
+              {/* Professional Casino Blackjack */}
+              <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+                <h2 className="text-2xl font-bold text-center mb-4 bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] bg-clip-text text-transparent drop-shadow-lg">
+                  USDT Blackjack 21
                 </h2>
                 
-                {/* Professional Roulette Wheel */}
-                <div className="flex justify-center mb-6">
-                  <div className="relative">
-                    {/* Outer rim */}
-                    <div className="w-64 h-64 rounded-full border-8 border-[#8B4513] bg-gradient-to-br from-[#D2691E] to-[#8B4513] shadow-2xl relative overflow-hidden">
-                      
-                      {/* Wheel segments */}
-                      <div 
-                        className="absolute inset-4 rounded-full overflow-hidden"
-                        style={{
-                          transform: `rotate(${wheelRotation}deg)`,
-                          transition: isSpinning ? 'none' : 'transform 0.5s ease-out'
-                        }}
-                      >
-                        {wheelSegments.map((color, index) => {
-                          const angle = (360 / wheelSegments.length) * index;
-                          const segmentAngle = 360 / wheelSegments.length;
-                          const startAngle = angle;
-                          const endAngle = angle + segmentAngle;
-                          
-                          // Calculate polygon points for perfect segments
-                          const centerX = 50;
-                          const centerY = 50;
-                          const innerRadius = 20; // Inner circle
-                          const outerRadius = 45; // Outer circle
-                          
-                          const points = [
-                            // Inner point
-                            `${centerX + innerRadius * Math.cos((startAngle + segmentAngle/2) * Math.PI / 180)}% ${centerY - innerRadius * Math.sin((startAngle + segmentAngle/2) * Math.PI / 180)}%`,
-                            // Outer points
-                            `${centerX + outerRadius * Math.cos(startAngle * Math.PI / 180)}% ${centerY - outerRadius * Math.sin(startAngle * Math.PI / 180)}%`,
-                            `${centerX + outerRadius * Math.cos(endAngle * Math.PI / 180)}% ${centerY - outerRadius * Math.sin(endAngle * Math.PI / 180)}%`,
-                          ].join(', ');
-                          
-                          return (
-                            <div
-                              key={index}
-                              className="absolute w-full h-full"
-                              style={{
-                                clipPath: `polygon(${points})`
-                              }}
-                            >
-                              <div 
-                                className={`w-full h-full ${
-                                  color === 'red' 
-                                    ? 'bg-gradient-to-br from-red-600 via-red-700 to-red-800' 
-                                    : 'bg-gradient-to-br from-gray-800 via-gray-900 to-black'
-                                }`}
-                              />
-                            </div>
-                          );
-                        })}
+                {/* Dealer Section */}
+                <div className="mb-6">
+                  <div className="text-center mb-2">
+                    <h3 className="text-lg font-bold text-white drop-shadow-sm">🎩 Dealer</h3>
+                    {gameState !== 'betting' && (
+                      <p className="text-sm text-white/80">
+                        Score: {gameState === 'playing' ? '?' : dealerScore}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex justify-center gap-2">
+                    {dealerHand.map((card, index) => (
+                      <div key={index} className="transform hover:scale-105 transition-transform">
+                        <Card 
+                          suit={card.suit} 
+                          value={card.value} 
+                          isHidden={gameState === 'playing' && index === 1}
+                          isAnimating={!cardAnimations.dealer[index]}
+                          animationDelay={index * 200}
+                        />
                       </div>
-                      
-                      {/* Center hub */}
-                      <div className="absolute inset-16 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] border-4 border-[#8B4513] flex items-center justify-center shadow-inner">
-                        <div className="w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center">
-                          <div className="w-4 h-4 rounded-full bg-[#8B4513]"></div>
-                        </div>
+                    ))}
+                    {/* Show hidden card placeholder during player's turn */}
+                    {gameState === 'playing' && dealerCompleteHand.length > 1 && dealerHand.length === 1 && (
+                      <div className="transform hover:scale-105 transition-transform">
+                        <Card 
+                          suit="hearts" 
+                          value="A" 
+                          isHidden={true}
+                          isAnimating={false}
+                          animationDelay={0}
+                        />
                       </div>
-                      
-                      {/* Ball */}
-                      <div 
-                        className="absolute w-4 h-4 rounded-full bg-white shadow-lg z-10"
-                        style={{
-                          top: '50%',
-                          left: '50%',
-                          transform: `translate(-50%, -50%) rotate(${ballPosition}deg) translateY(-110px)`,
-                          transition: isSpinning ? 'none' : 'all 0.5s ease-out'
-                        }}
-                      >
-                        <div className="w-full h-full rounded-full bg-gradient-to-br from-white to-gray-200 shadow-inner"></div>
-                      </div>
-                    </div>
-                    
-                    {/* Roulette pointer */}
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[15px] border-r-[15px] border-b-[25px] border-l-transparent border-r-transparent border-b-[#FFD700] drop-shadow-lg"></div>
-                    
-                    {/* Casino table numbers */}
-                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-[#228B22] rounded-lg px-4 py-2 border-2 border-[#FFD700] shadow-lg">
-                      <div className="flex gap-1">
-                        <div className="w-6 h-6 bg-red-600 rounded text-xs flex items-center justify-center font-bold">0</div>
-                        <div className="w-6 h-6 bg-black rounded text-xs flex items-center justify-center font-bold text-white">00</div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Color Selection */}
-                <div className="flex gap-4 mb-6">
-                  <button
-                    onClick={() => {
-                      if (!isSpinning) {
-                        setSelectedColor('red');
-                        triggerHapticFeedback(window);
-                        playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
-                      }
-                    }}
-                    className={`flex-1 py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 ${
-                      selectedColor === 'red'
-                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white scale-105 shadow-red-500/50'
-                        : 'bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white'
-                    } ${isSpinning ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={isSpinning}
-                  >
-                    🔴 RED
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      if (!isSpinning) {
-                        setSelectedColor('black');
-                        triggerHapticFeedback(window);
-                        playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
-                      }
-                    }}
-                    className={`flex-1 py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 ${
-                      selectedColor === 'black'
-                        ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white scale-105 shadow-gray-500/50'
-                        : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white'
-                    } ${isSpinning ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={isSpinning}
-                  >
-                    ⚫ BLACK
-                  </button>
+                {/* Player Section */}
+                <div className="mb-6">
+                  <div className="text-center mb-2">
+                    <h3 className="text-lg font-bold text-white drop-shadow-sm">👤 Your Hand</h3>
+                    {gameState !== 'betting' && (
+                      <p className="text-sm text-white/80">
+                        Score: {playerScore}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex justify-center gap-2">
+                    {playerHand.map((card, index) => (
+                      <div key={index} className="transform hover:scale-105 transition-transform">
+                        <Card 
+                          suit={card.suit} 
+                          value={card.value} 
+                          isAnimating={!cardAnimations.player[index]}
+                          animationDelay={index * 200}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Spin Button */}
-                <button
-                  onClick={() => {
-                    spinRoulette();
-                    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.5 });
-                  }}
-                  disabled={isSpinning || !selectedColor}
-                  className={`w-full py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 flex items-center justify-center ${
-                    isSpinning 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : !selectedColor
-                      ? 'bg-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] hover:from-[#f3ba2f] hover:to-[#f0b90b] text-[#0a1f17] shadow-yellow-500/30'
-                  }`}
-                >
-                  {isSpinning ? '🎰 Spinning...' : !selectedColor ? 'Select a color first' : '🎰 Spin Roulette'}
-                </button>
+                {/* Game Controls */}
+                {gameState === 'betting' && (
+                  <button
+                    onClick={dealInitialCards}
+                    disabled={isDealing}
+                    className={`w-full py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] hover:from-[#f3ba2f] hover:to-[#f0b90b] text-[#0a1f17] shadow-yellow-500/30 transform hover:scale-105 active:scale-95 ${
+                      isDealing ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    {isDealing ? '🃏 Dealing...' : '🃏 Deal Cards'}
+                  </button>
+                )}
 
-                {/* Last Result Display */}
-                {lastResult && (
+                {gameState === 'playing' && (
+                  <div className="flex gap-4">
+                    <button
+                      onClick={hit}
+                      className="flex-1 py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 bg-gradient-to-r from-[#90ef89] to-[#7dd87d] hover:from-[#7dd87d] hover:to-[#6bc26b] text-white transform hover:scale-105 active:scale-95"
+                    >
+                      🃏 Hit
+                    </button>
+                    <button
+                      onClick={stand}
+                      className="flex-1 py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white transform hover:scale-105 active:scale-95"
+                    >
+                      ✋ Stand
+                    </button>
+                  </div>
+                )}
+
+                {gameState === 'result' && (
+                  <button
+                    onClick={playAgain}
+                    className="w-full py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] hover:from-[#f3ba2f] hover:to-[#f0b90b] text-[#0a1f17] shadow-yellow-500/30 transform hover:scale-105 active:scale-95"
+                  >
+                    🃏 Play Again
+                  </button>
+                )}
+
+                {/* Game Result Display */}
+                {gameResult && (
                   <div className="mt-4 text-center">
-                    <p className="text-lg">
-                      Last result: 
-                      <span className={`font-bold ml-2 ${lastResult === 'red' ? 'text-red-400' : 'text-gray-300'}`}>
-                        {lastResult === 'red' ? '🔴 RED' : '⚫ BLACK'}
-                      </span>
-                    </p>
-                    {lastWin ? (
-                      <p className="text-[#f0b90b] font-bold mt-2 animate-pulse">
-                        +1 USDT Won! 🎉
-                      </p>
-                    ) : (
-                      <p className="text-red-400 font-bold mt-2">
-                        Try again! 💪
-                      </p>
+                    {gameResult === 'win' && (
+                      <div className="text-[#f0b90b] font-bold text-xl animate-pulse-glow">
+                        🎉 You won 1 <span className="text-[#90ef89] font-black text-2xl">₮</span>!
+                      </div>
+                    )}
+                    {gameResult === 'lose' && (
+                      <div className="text-red-400 font-bold text-xl animate-pulse">
+                        💥 You lost. Try again.
+                      </div>
+                    )}
+                    {gameResult === 'draw' && (
+                      <div className="text-blue-400 font-bold text-xl animate-pulse">
+                        ⚖️ Draw! No one wins.
+                      </div>
                     )}
                   </div>
                 )}
               </div>
 
               {/* Game Instructions */}
-              <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                <h2 className="text-2xl font-bold text-center mb-4 bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] bg-clip-text text-transparent">
-                  How to Play
+              <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+                <h2 className="text-2xl font-bold text-center mb-4 bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] bg-clip-text text-transparent drop-shadow-lg">
+                  🎯 How to Play & Win
                 </h2>
-                <div className="space-y-3 text-white/90">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-[#f0b90b] rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <span className="text-black text-sm font-bold">1</span>
-                    </div>
-                    <p>Choose your lucky color: <span className="text-red-400">Red</span> or <span className="text-gray-300">Black</span></p>
+                <div className="space-y-4 text-white/90">
+                  {/* Game Objective */}
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <h3 className="text-lg font-bold text-[#f0b90b] mb-2">🎯 Objective</h3>
+                    <p>Get as close to <span className="text-[#90ef89] font-bold">21</span> as possible without going over. Beat the dealer's hand to win!</p>
                   </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-[#f0b90b] rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <span className="text-black text-sm font-bold">2</span>
+
+                  {/* Card Values */}
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <h3 className="text-lg font-bold text-[#f0b90b] mb-2">🃏 Card Values</h3>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>• <span className="text-[#90ef89]">2-10:</span> Face value</div>
+                      <div>• <span className="text-purple-400">J, Q, K:</span> 10 points</div>
+                      <div>• <span className="text-yellow-400">A:</span> 1 or 11 (auto-adjusted)</div>
                     </div>
-                    <p>Watch the ball bounce and land on your color!</p>
                   </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-[#f0b90b] rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                      <span className="text-black text-sm font-bold">3</span>
+
+                  {/* Game Flow */}
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <h3 className="text-lg font-bold text-[#f0b90b] mb-2">🔄 Game Flow</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-[#90ef89] font-bold">1.</span>
+                        <span>Click <span className="text-[#90ef89] font-bold">"Deal Cards"</span> to start</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-[#90ef89] font-bold">2.</span>
+                        <span>Choose <span className="text-[#90ef89] font-bold">"Hit"</span> to draw a card or <span className="text-red-400 font-bold">"Stand"</span> to keep your hand</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-[#90ef89] font-bold">3.</span>
+                        <span>Dealer plays automatically after you stand</span>
+                      </div>
                     </div>
-                    <p>Guess correctly to win <span className="text-[#f0b90b] font-bold">+1 USDT</span>!</p>
+                  </div>
+
+                  {/* How to Win */}
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <h3 className="text-lg font-bold text-[#f0b90b] mb-2">🏆 How to Win</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-[#90ef89]">✅</span>
+                        <span>Your hand is closer to 21 than dealer's</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-[#90ef89]">✅</span>
+                        <span>Dealer busts (goes over 21)</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-red-400">❌</span>
+                        <span>You bust (go over 21) = You lose</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <span className="text-blue-400">⚖️</span>
+                        <span>Same score = Draw (no winner)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rewards */}
+                  <div className="bg-gradient-to-r from-[#f0b90b]/20 to-[#f3ba2f]/20 rounded-lg p-4 border border-[#f0b90b]/30">
+                    <h3 className="text-lg font-bold text-[#f0b90b] mb-2">💰 Rewards</h3>
+                    <p className="text-center text-[#f0b90b] font-bold text-lg">
+                      Win = <span className="text-2xl">+1 <span className="text-[#90ef89] font-black text-3xl">₮</span></span> 🎉
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Live Payouts button - Replacing Energy Display */}
+              {/* Live Payouts button */}
               <div className="px-4 mt-6">
                 <button
                   onClick={() => {
                     triggerHapticFeedback(window);
-                    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
                     setCurrentView('airdrop');
                     localStorage.setItem('scrollToTransactions', 'true');
                   }}
@@ -423,16 +664,129 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       {/* Result Animation */}
       {showResult && (
         <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
-          <div className="animate-bounce text-6xl">
-            {lastWin ? '🎉' : '💪'}
+          {/* Background overlay for better visibility */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+          
+          {/* Main result container */}
+          <div className="relative z-10 flex flex-col items-center">
+            {/* Emoji animation */}
+            <div className={`text-8xl mb-4 ${
+              gameResult === 'win' ? 'animate-bounce' : 
+              gameResult === 'lose' ? 'animate-shake' : 
+              'animate-pulse'
+            }`}>
+              {gameResult === 'win' ? '🎉' : gameResult === 'lose' ? '💥' : '⚖️'}
+            </div>
+            
+            {/* Text animation */}
+            <div className={`text-5xl font-bold text-center ${
+              gameResult === 'win' ? 'text-[#f0b90b] animate-float' : 
+              gameResult === 'lose' ? 'text-red-400 animate-slide-up' : 
+              'text-blue-400 animate-slide-up'
+            }`}>
+              {gameResult === 'win' ? (
+                <div className="flex items-center space-x-2">
+                  <span>+1</span>
+                  <span className="text-[#90ef89] font-black animate-pulse">₮</span>
+                  <span>!</span>
+                </div>
+              ) : gameResult === 'lose' ? (
+                <div className="flex flex-col items-center">
+                  <span className="text-4xl mb-2">💥 You Lost!</span>
+                  <span className="text-2xl text-white/80">Try Again</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <span className="text-4xl mb-2">⚖️ Draw!</span>
+                  <span className="text-2xl text-white/80">No Winner</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Additional effects for lose */}
+            {gameResult === 'lose' && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="animate-explosion">
+                  <div className="w-4 h-4 bg-red-500 rounded-full absolute top-0 left-1/2 transform -translate-x-1/2"></div>
+                  <div className="w-4 h-4 bg-red-500 rounded-full absolute top-1/4 left-1/4"></div>
+                  <div className="w-4 h-4 bg-red-500 rounded-full absolute top-1/4 right-1/4"></div>
+                  <div className="w-4 h-4 bg-red-500 rounded-full absolute bottom-1/4 left-1/4"></div>
+                  <div className="w-4 h-4 bg-red-500 rounded-full absolute bottom-1/4 right-1/4"></div>
+                  <div className="w-4 h-4 bg-red-500 rounded-full absolute bottom-0 left-1/2 transform -translate-x-1/2"></div>
+                </div>
+              </div>
+            )}
+            
+            {/* Additional effects for draw */}
+            {gameResult === 'draw' && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="animate-balance">
+                  <div className="w-6 h-6 bg-blue-400 rounded-full absolute top-0 left-1/2 transform -translate-x-1/2"></div>
+                  <div className="w-6 h-6 bg-blue-400 rounded-full absolute bottom-0 left-1/2 transform -translate-x-1/2"></div>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="absolute text-4xl font-bold text-[#f0b90b] animate-float">
-            {lastWin ? '+1 USDT' : 'Try Again!'}
+        </div>
+      )}
+
+      {/* Flying Card Animation */}
+      {(isDealing || flyingCard.show) && (
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-40">
+          <div className={`w-16 h-24 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg border-2 border-white shadow-2xl flex items-center justify-center ${
+            isDealing ? 'animate-flying-card' : 'animate-flying-card-new'
+          }`}>
+            {flyingCard.card ? (
+              <div className="text-white text-xs font-bold tracking-wider">
+                {flyingCard.card.value}
+              </div>
+            ) : (
+              <div className="text-white text-xs font-bold tracking-wider">CASINO</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Flying Card with Real Card Display */}
+      {flyingCard.show && flyingCard.card && (
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-40">
+          <div className="w-16 h-24 bg-white rounded-lg border-2 border-gray-300 shadow-2xl flex flex-col justify-between p-1 animate-flying-card-new">
+            {/* Top left corner */}
+            <div className="flex flex-col items-start">
+              <div className={`text-xs font-bold ${flyingCard.card.suit === 'hearts' || flyingCard.card.suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+                {flyingCard.card.value}
+              </div>
+              <div className={`text-xs ${flyingCard.card.suit === 'hearts' || flyingCard.card.suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+                {flyingCard.card.suit === 'hearts' ? '♥' : flyingCard.card.suit === 'diamonds' ? '♦' : flyingCard.card.suit === 'clubs' ? '♣' : '♠'}
+              </div>
+            </div>
+            
+            {/* Center symbol */}
+            <div className="flex items-center justify-center flex-1">
+              <div className={`text-2xl ${flyingCard.card.suit === 'hearts' || flyingCard.card.suit === 'diamonds' ? 'text-red-600' : 'text-black'} drop-shadow-sm`}>
+                {flyingCard.card.suit === 'hearts' ? '♥' : flyingCard.card.suit === 'diamonds' ? '♦' : flyingCard.card.suit === 'clubs' ? '♣' : '♠'}
+              </div>
+            </div>
+            
+            {/* Bottom right corner (rotated) */}
+            <div className="flex flex-col items-end transform rotate-180">
+              <div className={`text-xs font-bold ${flyingCard.card.suit === 'hearts' || flyingCard.card.suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+                {flyingCard.card.value}
+              </div>
+              <div className={`text-xs ${flyingCard.card.suit === 'hearts' || flyingCard.card.suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+                {flyingCard.card.suit === 'hearts' ? '♥' : flyingCard.card.suit === 'diamonds' ? '♦' : flyingCard.card.suit === 'clubs' ? '♣' : '♠'}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       <style jsx global>{`
+        body {
+          background: linear-gradient(to bottom, #0f5132, #90ef89);
+          min-height: 100vh;
+        }
+        
         @keyframes float {
           0% {
             transform: translateY(0);
@@ -451,11 +805,181 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
             transform: translateY(-20px);
           }
         }
+        @keyframes card-appear {
+          0% {
+            transform: translateY(-100px) scale(0.5);
+            opacity: 0;
+          }
+          50% {
+            transform: translateY(-20px) scale(1.1);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+        }
+        @keyframes card-flip {
+          0% {
+            transform: rotateY(0deg);
+          }
+          50% {
+            transform: rotateY(90deg);
+          }
+          100% {
+            transform: rotateY(0deg);
+          }
+        }
+        @keyframes dealer-reveal {
+          0% {
+            transform: rotateY(0deg);
+          }
+          100% {
+            transform: rotateY(180deg);
+          }
+        }
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(243, 186, 47, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(243, 186, 47, 0.6);
+          }
+        }
+        @keyframes flying-card {
+          0% {
+            transform: translateY(-200px) scale(0.3) rotate(-180deg);
+            opacity: 0;
+          }
+          20% {
+            transform: translateY(-100px) scale(0.8) rotate(-90deg);
+            opacity: 0.8;
+          }
+          50% {
+            transform: translateY(-50px) scale(1.2) rotate(0deg);
+            opacity: 1;
+          }
+          80% {
+            transform: translateY(-20px) scale(1.1) rotate(0deg);
+            opacity: 0.9;
+          }
+          100% {
+            transform: translateY(0) scale(1) rotate(0deg);
+            opacity: 0;
+          }
+        }
+        @keyframes flying-card-new {
+          0% {
+            transform: translateY(-300px) scale(0.2) rotate(-360deg);
+            opacity: 0;
+          }
+          25% {
+            transform: translateY(-150px) scale(0.6) rotate(-180deg);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translateY(-50px) scale(1.3) rotate(0deg);
+            opacity: 1;
+          }
+          75% {
+            transform: translateY(-10px) scale(1.1) rotate(0deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(0) scale(1) rotate(0deg);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes shake {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          10%, 30%, 50%, 70%, 90% {
+            transform: translateX(-10px);
+          }
+          20%, 40%, 60%, 80% {
+            transform: translateX(10px);
+          }
+        }
+        
+        @keyframes slide-up {
+          0% {
+            transform: translateY(50px);
+            opacity: 0;
+          }
+          50% {
+            transform: translateY(-10px);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes explosion {
+          0% {
+            transform: scale(0) rotate(0deg);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.5) rotate(180deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(2) rotate(360deg);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes balance {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          25% {
+            transform: translateY(-20px);
+          }
+          75% {
+            transform: translateY(20px);
+          }
+        }
+        
         .animate-float {
           animation: float 2s ease-out forwards;
         }
         .animate-bounce {
           animation: bounce 1s infinite;
+        }
+        .animate-card-appear {
+          animation: card-appear 0.8s ease-out forwards;
+        }
+        .animate-card-flip {
+          animation: card-flip 0.4s ease-in-out;
+        }
+        .animate-dealer-reveal {
+          animation: dealer-reveal 0.8s ease-in-out;
+        }
+        .animate-pulse-glow {
+          animation: pulse-glow 2s ease-in-out infinite;
+        }
+        .animate-flying-card {
+          animation: flying-card 1.2s ease-out forwards;
+        }
+        .animate-flying-card-new {
+          animation: flying-card-new 0.8s ease-out forwards;
+        }
+        .animate-shake {
+          animation: shake 0.8s ease-in-out;
+        }
+        .animate-slide-up {
+          animation: slide-up 0.6s ease-out forwards;
+        }
+        .animate-explosion {
+          animation: explosion 1.5s ease-out forwards;
+        }
+        .animate-balance {
+          animation: balance 2s ease-in-out infinite;
         }
         .filter.drop-shadow-glow-yellow {
           filter: drop-shadow(0 0 8px rgba(243, 186, 47, 0.3));

@@ -35,7 +35,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
     { name: 'Earn', icon: IceCube, view: 'game' },
-    { name: 'Top-Traders', icon: Mine, view: 'mine' },
+    { name: 'Invest', icon: Mine, view: 'mine' },
     { name: 'Referrals', icon: Friends, view: 'friends' },
     { name: 'Get More', icon: Coins, view: 'earn' },
     { name: 'Withdrawal', image: iceToken, view: 'airdrop' },

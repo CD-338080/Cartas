@@ -17,7 +17,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { botUrlQr, mainCharacter } from '@/images';
+import { botUrlQr } from '@/images';
 import IceCube from '@/icons/IceCube';
 import { calculateEnergyLimit, calculateLevelIndex, calculatePointsPerClick, calculateProfitPerHour, GameState, InitialGameState, useGameStore } from '@/utils/game-mechanics';
 import WebApp from '@twa-dev/sdk';
@@ -29,16 +29,77 @@ interface LoadingProps {
   setCurrentView: (view: string) => void;
 }
 
+// Card component for loading animations
+const LoadingCard = ({ suit, value, isHidden = false, delay = 0, position = 'center' }: {
+  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  value: string;
+  isHidden?: boolean;
+  delay?: number;
+  position?: 'left' | 'center' | 'right';
+}) => {
+  if (isHidden) {
+    return (
+      <div
+        className="w-16 h-24 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg border-2 border-white shadow-lg flex items-center justify-center relative overflow-hidden transform hover:scale-105 transition-all duration-500 ease-out"
+        style={{
+          animationDelay: `${delay}ms`,
+          transform: position === 'left' ? 'rotate(-15deg)' : position === 'right' ? 'rotate(15deg)' : 'rotate(0deg)',
+          zIndex: position === 'center' ? 20 : 10
+        }}
+      >
+        <div className="text-white text-xs font-bold tracking-wider">USDT</div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-16 h-24 bg-white rounded-lg border-2 border-gray-300 shadow-lg flex flex-col justify-between p-1 transform hover:scale-105 transition-all duration-500 ease-out"
+      style={{
+        animationDelay: `${delay}ms`,
+        transform: position === 'left' ? 'rotate(-15deg)' : position === 'right' ? 'rotate(15deg)' : 'rotate(0deg)',
+        zIndex: position === 'center' ? 20 : 10
+      }}
+    >
+      {/* Top left corner */}
+      <div className="flex flex-col items-start">
+        <div className={`text-xs font-bold ${suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+          {value}
+        </div>
+        <div className={`text-xs ${suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+          {suit === 'hearts' ? '♥' : suit === 'diamonds' ? '♦' : suit === 'clubs' ? '♣' : '♠'}
+        </div>
+      </div>
+      
+      {/* Center symbol */}
+      <div className="flex items-center justify-center flex-1">
+        <div className={`text-2xl ${suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-black'} drop-shadow-sm`}>
+          {suit === 'hearts' ? '♥' : suit === 'diamonds' ? '♦' : suit === 'clubs' ? '♣' : '♠'}
+        </div>
+      </div>
+      
+      {/* Bottom right corner (rotated) */}
+      <div className="flex flex-col items-end transform rotate-180">
+        <div className={`text-xs font-bold ${suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+          {value}
+        </div>
+        <div className={`text-xs ${suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-black'}`}>
+          {suit === 'hearts' ? '♥' : suit === 'diamonds' ? '♦' : suit === 'clubs' ? '♣' : '♠'}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Loading({ setIsInitialized, setCurrentView }: LoadingProps) {
   const initializeState = useGameStore((state: GameState) => state.initializeState);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const openTimestampRef = useRef(Date.now());
   const [isAppropriateDevice, setIsAppropriateDevice] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [rouletteSpins, setRouletteSpins] = useState(0);
-  const [diceValues, setDiceValues] = useState([1, 1]);
-  const [slotSymbols, setSlotSymbols] = useState(['$', '₮', '7']);
-  const [showJackpot, setShowJackpot] = useState(false);
+  const [showCards, setShowCards] = useState(false);
+  const [dealingPhase, setDealingPhase] = useState(0);
 
   const sendWelcomeMessage = async (telegramId: string, telegramName: string) => {
     try {
@@ -92,40 +153,27 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
         telegramName = "Test User"; // Temporary name for testing
       }
       
-      // Enhanced loading progress with casino effects
+      // Start card dealing animation
+      setShowCards(true);
+      
+      // Simulate loading progress with card dealing phases
       const loadingInterval = setInterval(() => {
         setLoadingProgress(prev => {
-          if (prev >= 70) {
+          if (prev >= 100) {
             clearInterval(loadingInterval);
             return prev;
           }
-          const increment = Math.random() * 8 + 2;
-          return Math.min(prev + increment, 70);
+          return prev + Math.random() * 8 + 2;
+        });
+        
+        // Update dealing phase based on progress
+        setDealingPhase(prev => {
+          if (loadingProgress < 25) return 1;
+          if (loadingProgress < 50) return 2;
+          if (loadingProgress < 75) return 3;
+          return 4;
         });
       }, 200);
-
-      // Roulette spinning animation
-      const rouletteInterval = setInterval(() => {
-        setRouletteSpins(prev => prev + 1);
-      }, 100);
-
-      // Dice rolling animation
-      const diceInterval = setInterval(() => {
-        setDiceValues([
-          Math.floor(Math.random() * 6) + 1,
-          Math.floor(Math.random() * 6) + 1
-        ]);
-      }, 300);
-
-      // Slot machine animation
-      const slotInterval = setInterval(() => {
-        const symbols = ['$', '₮', '7', '★', '♦', '♠', '♥', '♣'];
-        setSlotSymbols([
-          symbols[Math.floor(Math.random() * symbols.length)],
-          symbols[Math.floor(Math.random() * symbols.length)],
-          symbols[Math.floor(Math.random() * symbols.length)]
-        ]);
-      }, 150);
       
       const response = await fetch('/api/user', {
         method: 'POST',
@@ -171,8 +219,6 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
         mineLevelIndex: userData.mineLevelIndex,
         profitPerHour: calculateProfitPerHour(userData.mineLevelIndex),
         tonWalletAddress: userData?.tonWalletAddress,
-        lastBonusClaimTimestamp: userData.lastBonusClaimTimestamp || 0,
-        nextBonusAvailableTimestamp: userData.nextBonusAvailableTimestamp || 0,
       };
 
       console.log("Initial state: ", initialState);
@@ -184,14 +230,9 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
         await sendWelcomeMessage(telegramId, telegramName);
       }
       
-      // Clear intervals
-      clearInterval(rouletteInterval);
-      clearInterval(diceInterval);
-      clearInterval(slotInterval);
-      
-      // Final loading animation
+      // Complete the loading progress
       setLoadingProgress(100);
-      setShowJackpot(true);
+      setDealingPhase(5);
       
       // Set data as loaded
       setIsDataLoaded(true);
@@ -199,7 +240,7 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
       console.error('Error fetching user data:', error);
       // Handle error (e.g., show error message to user)
     }
-  }, [initializeState]);
+  }, [initializeState, loadingProgress]);
 
   useEffect(() => {
     const parser = new UAParser();
@@ -210,7 +251,7 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
     if (isAppropriate) {
       fetchOrCreateUser();
     }
-  }, [fetchOrCreateUser]);
+  }, []);
 
   useEffect(() => {
     if (isDataLoaded) {
@@ -246,163 +287,153 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
     );
   }
 
-  // USDT TRC-20 color palette
-  const usdtGreen = "#26A17B";
-  const usdtDarkGreen = "#1E8A6B";
-  const usdtLightGreen = "#2ECC71";
-  const usdtAccentGreen = "#00D4AA";
-  const usdtGold = "#F7931A";
-  const usdtDark = "#1a1a1a";
-
   return (
-    <div className="bg-gradient-to-br from-[#1a1a1a] via-[#1E8A6B] to-[#26A17B] flex justify-center items-center h-screen overflow-hidden relative">
-      {/* Animated background particles */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(50)].map((_, i) => (
-          <div 
-            key={i}
-            className="absolute rounded-full opacity-30"
-            style={{
-              backgroundColor: [usdtGreen, usdtLightGreen, usdtAccentGreen, usdtGold, usdtDarkGreen][i % 5],
-              width: `${Math.random() * 8 + 2}px`,
-              height: `${Math.random() * 8 + 2}px`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `casinoFloat ${Math.random() * 15 + 10}s linear infinite`,
-              animationDelay: `${Math.random() * 10}s`,
-              filter: 'blur(1px)',
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Main content container */}
-      <div className="w-full max-w-4xl text-white flex flex-col items-center relative z-10">
-        
-        {/* Casino Roulette Wheel */}
-        <div className="relative mb-8">
-          <div className="w-80 h-80 relative">
-            {/* Outer ring */}
+    <div className="bg-gradient-to-b from-[#0f5132] to-[#90ef89] flex justify-center items-center h-screen overflow-hidden">
+      <div className="w-full max-w-xl text-white flex flex-col items-center relative">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(15)].map((_, i) => (
             <div 
-              className="absolute inset-0 rounded-full border-8 border-[#26A17B]"
+              key={i}
+              className="absolute rounded-full opacity-10"
               style={{
-                boxShadow: `0 0 40px ${usdtGreen}80, inset 0 0 40px ${usdtGreen}40`,
-                animation: "rouletteSpin 3s linear infinite"
+                backgroundColor: i % 3 === 0 ? '#90ef89' : i % 3 === 1 ? '#0f5132' : '#f0b90b',
+                width: `${Math.random() * 60 + 20}px`,
+                height: `${Math.random() * 60 + 20}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `float ${Math.random() * 15 + 10}s linear infinite`,
+                animationDelay: `${Math.random() * 5}s`,
+                transform: `scale(${Math.random() * 0.5 + 0.5})`,
               }}
             />
-            
-            {/* Inner ring with numbers */}
-            <div 
-              className="absolute inset-8 rounded-full border-4 border-[#2ECC71]"
-              style={{
-                boxShadow: `0 0 30px ${usdtLightGreen}60`,
-                animation: "rouletteSpin 2.5s linear infinite reverse"
-              }}
-            />
-            
-            {/* Center circle */}
-            <div className="absolute inset-16 rounded-full bg-gradient-to-br from-[#26A17B] to-[#2ECC71] flex items-center justify-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#1a1a1a] to-[#1E8A6B] flex items-center justify-center border-4 border-[#26A17B]">
-                <Image
-                  src={mainCharacter}
-                  alt="Main Character"
-                  width={60}
-                  height={60}
-                  className="rounded-full"
-                />
-              </div>
-            </div>
-
-            {/* Roulette numbers */}
-            {[...Array(12)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                style={{
-                  backgroundColor: i % 2 === 0 ? usdtLightGreen : usdtDark,
-                  color: i % 2 === 0 ? 'white' : usdtGreen,
-                  left: `${50 + 35 * Math.cos((i * 30 - 90) * Math.PI / 180)}%`,
-                  top: `${50 + 35 * Math.sin((i * 30 - 90) * Math.PI / 180)}%`,
-                  transform: 'translate(-50%, -50%)',
-                  animation: "rouletteSpin 2s linear infinite",
-                  animationDelay: `${i * 0.1}s`
-                }}
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Title with slot machine effect */}
-        <div className="text-4xl font-bold mb-6 text-center">
-          <div className="flex items-center justify-center space-x-2">
-            <span className="text-[#26A17B] animate-slot-machine">USDT</span>
-            <span className="text-[#2ECC71] animate-slot-machine-delay-1">ROLL</span>
-            <span className="text-[#00D4AA] animate-slot-machine-delay-2">ROULETTE</span>
-          </div>
-        </div>
-
-        {/* Slot Machine Display */}
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="w-16 h-16 bg-gradient-to-b from-[#26A17B] to-[#1E8A6B] rounded-lg flex items-center justify-center text-2xl font-bold text-white border-2 border-[#26A17B] shadow-lg">
-            {slotSymbols[0]}
-          </div>
-          <div className="w-16 h-16 bg-gradient-to-b from-[#2ECC71] to-[#27AE60] rounded-lg flex items-center justify-center text-2xl font-bold text-white border-2 border-[#2ECC71] shadow-lg">
-            {slotSymbols[1]}
-          </div>
-          <div className="w-16 h-16 bg-gradient-to-b from-[#00D4AA] to-[#00B894] rounded-lg flex items-center justify-center text-2xl font-bold text-white border-2 border-[#00D4AA] shadow-lg">
-            {slotSymbols[2]}
-          </div>
-        </div>
-
-        {/* Dice Animation */}
-        <div className="flex items-center space-x-6 mb-6">
-          {diceValues.map((value, index) => (
-            <div 
-              key={index}
-              className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-[#1a1a1a] font-bold text-lg border-2 border-[#26A17B] shadow-lg"
-              style={{
-                animation: "diceBounce 0.6s ease-in-out infinite",
-                animationDelay: `${index * 0.1}s`
-              }}
-            >
-              {value}
-            </div>
           ))}
         </div>
 
-        {/* Progress bar with USDT style */}
-        <div className="w-80 h-4 bg-[#1a1a1a] rounded-full mb-6 overflow-hidden border-2 border-[#26A17B] shadow-lg">
+        {/* Main Character */}
+        <div className="w-48 h-48 rounded-full p-4 mb-6 relative z-10">
           <div 
-            className="h-full bg-gradient-to-r from-[#26A17B] via-[#2ECC71] to-[#00D4AA] rounded-full relative"
+            className="w-full h-full rounded-full overflow-hidden relative border-4 border-white/20"
+            style={{
+              boxShadow: `0 0 30px #f0b90b80`,
+              animation: "pulse 2s infinite"
+            }}
+          >
+            <div 
+              className="absolute inset-0 bg-gradient-to-br from-[#90ef89] to-[#0f5132] opacity-80"
+              style={{
+                animation: "rotate 4s linear infinite"
+              }}
+            />
+            {/* Tether USDT Logo */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-lg border-4 border-[#f0b90b]">
+                <div className="text-center">
+                  <div className="text-[#90ef89] text-6xl font-black mb-2">₮</div>
+                  <div className="text-[#0f5132] text-sm font-bold">USDT</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Game Title */}
+        <h1 className="text-4xl font-bold mb-6 text-center relative z-10">
+          <span className="text-white">USDT</span> <span className="text-[#f0b90b]">BLACKJACK</span> <span className="text-white">21</span>
+        </h1>
+
+        {/* Card Dealing Animation */}
+        <div className="relative mb-8 z-20">
+          {/* Dealer Cards */}
+          <div className="flex justify-center gap-2 mb-4">
+            {dealingPhase >= 1 && (
+              <div className="animate-card-deal-1">
+                <LoadingCard suit="hearts" value="A" delay={0} position="left" />
+              </div>
+            )}
+            {dealingPhase >= 2 && (
+              <div className="animate-card-deal-2">
+                <LoadingCard suit="hearts" value="A" isHidden={true} delay={300} position="center" />
+              </div>
+            )}
+          </div>
+
+          {/* Player Cards */}
+          <div className="flex justify-center gap-2">
+            {dealingPhase >= 3 && (
+              <div className="animate-card-deal-3">
+                <LoadingCard suit="diamonds" value="K" delay={600} position="left" />
+              </div>
+            )}
+            {dealingPhase >= 4 && (
+              <div className="animate-card-deal-4">
+                <LoadingCard suit="clubs" value="Q" delay={900} position="right" />
+              </div>
+            )}
+          </div>
+
+          {/* Flying Card Animation */}
+          {dealingPhase >= 5 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="animate-flying-card-final">
+                <LoadingCard suit="spades" value="J" delay={0} position="center" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-80 h-3 bg-white/20 backdrop-blur-sm rounded-full mb-6 overflow-hidden relative z-10 border border-white/30">
+          <div 
+            className="h-full bg-gradient-to-r from-[#f0b90b] to-[#f3ba2f] rounded-full shadow-lg"
             style={{ 
               width: `${loadingProgress}%`,
               transition: 'width 0.3s ease-out'
             }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-          </div>
+          />
         </div>
 
-        {/* Jackpot effect */}
-        {showJackpot && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-6xl font-bold text-[#26A17B] animate-jackpot">
-              JACKPOT!
-            </div>
-          </div>
-        )}
+        {/* Loading Text */}
+        <div className="text-center relative z-10">
+          <p className="text-lg font-semibold mb-2">
+            {loadingProgress < 25 && "🃏 Shuffling deck..."}
+            {loadingProgress >= 25 && loadingProgress < 50 && "🎯 Dealing cards..."}
+            {loadingProgress >= 50 && loadingProgress < 75 && "⚡ Calculating odds..."}
+            {loadingProgress >= 75 && loadingProgress < 100 && "🎰 Preparing game..."}
+            {loadingProgress >= 100 && "🎉 Ready to play!"}
+          </p>
+          <p className="text-sm text-white/70">
+            Loading... {Math.round(loadingProgress)}%
+          </p>
+        </div>
 
-        {/* Loading text */}
-        <div className="text-lg text-[#26A17B] font-semibold animate-pulse">
-          Loading USDT Experience...
+        {/* USDT Logo */}
+        <div className="flex items-center space-x-4 mt-6 relative z-10">
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center animate-bounce">
+            <span className="text-[#90ef89] text-xl font-black">₮</span>
+          </div>
+          <div className="text-center">
+            <p className="text-white font-bold">USDT Rewards</p>
+            <p className="text-white/70 text-sm">Win real prizes</p>
+          </div>
         </div>
       </div>
 
       {/* CSS Animations */}
       <style jsx global>{`
-        @keyframes rouletteSpin {
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 15px #f0b90b40;
+          }
+          50% {
+            box-shadow: 0 0 30px #f0b90b80;
+          }
+          100% {
+            box-shadow: 0 0 15px #f0b90b40;
+          }
+        }
+        
+        @keyframes rotate {
           from {
             transform: rotate(0deg);
           }
@@ -411,88 +442,125 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
           }
         }
         
-        @keyframes casinoFloat {
+        @keyframes float {
           0% {
-            transform: translateY(100vh) rotate(0deg);
-            opacity: 0;
+            transform: translateY(0) rotate(0deg);
+            opacity: 0.1;
           }
-          10% {
-            opacity: 0.3;
-          }
-          90% {
+          50% {
             opacity: 0.3;
           }
           100% {
             transform: translateY(-100vh) rotate(360deg);
-            opacity: 0;
+            opacity: 0.1;
           }
         }
         
-        @keyframes slotMachine {
+        @keyframes card-deal-1 {
           0% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-          100% {
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes diceBounce {
-          0%, 100% {
-            transform: translateY(0) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-10px) rotate(180deg);
-          }
-        }
-        
-        @keyframes shimmer {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-        
-        @keyframes jackpot {
-          0% {
-            transform: scale(0) rotate(0deg);
+            transform: translateY(-200px) scale(0.3) rotate(-180deg);
             opacity: 0;
           }
           50% {
-            transform: scale(1.2) rotate(180deg);
-            opacity: 1;
+            transform: translateY(-50px) scale(1.2) rotate(-90deg);
+            opacity: 0.8;
           }
           100% {
-            transform: scale(1) rotate(360deg);
+            transform: translateY(0) scale(1) rotate(-15deg);
             opacity: 1;
           }
         }
         
-        .animate-slot-machine {
-          animation: slotMachine 0.8s ease-in-out infinite;
+        @keyframes card-deal-2 {
+          0% {
+            transform: translateY(-200px) scale(0.3) rotate(-180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: translateY(-50px) scale(1.2) rotate(-90deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(0) scale(1) rotate(0deg);
+            opacity: 1;
+          }
         }
         
-        .animate-slot-machine-delay-1 {
-          animation: slotMachine 0.8s ease-in-out infinite;
-          animation-delay: 0.2s;
+        @keyframes card-deal-3 {
+          0% {
+            transform: translateY(-200px) scale(0.3) rotate(-180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: translateY(-50px) scale(1.2) rotate(-90deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(0) scale(1) rotate(-15deg);
+            opacity: 1;
+          }
         }
         
-        .animate-slot-machine-delay-2 {
-          animation: slotMachine 0.8s ease-in-out infinite;
-          animation-delay: 0.4s;
+        @keyframes card-deal-4 {
+          0% {
+            transform: translateY(-200px) scale(0.3) rotate(-180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: translateY(-50px) scale(1.2) rotate(-90deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(0) scale(1) rotate(15deg);
+            opacity: 1;
+          }
         }
         
-        .animate-shimmer {
-          animation: shimmer 2s linear infinite;
+        @keyframes flying-card-final {
+          0% {
+            transform: translateY(-300px) scale(0.2) rotate(-360deg);
+            opacity: 0;
+          }
+          25% {
+            transform: translateY(-150px) scale(0.6) rotate(-180deg);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translateY(-50px) scale(1.3) rotate(0deg);
+            opacity: 1;
+          }
+          75% {
+            transform: translateY(-10px) scale(1.1) rotate(0deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateY(0) scale(1) rotate(0deg);
+            opacity: 0;
+          }
         }
         
-        .animate-jackpot {
-          animation: jackpot 1s ease-out forwards;
+        .animate-card-deal-1 {
+          animation: card-deal-1 1s ease-out forwards;
+        }
+        
+        .animate-card-deal-2 {
+          animation: card-deal-2 1s ease-out forwards;
+        }
+        
+        .animate-card-deal-3 {
+          animation: card-deal-3 1s ease-out forwards;
+        }
+        
+        .animate-card-deal-4 {
+          animation: card-deal-4 1s ease-out forwards;
+        }
+        
+        .animate-flying-card-final {
+          animation: flying-card-final 1.5s ease-out forwards;
+        }
+        
+        .filter.drop-shadow-glow-yellow {
+          filter: drop-shadow(0 0 8px rgba(243, 186, 47, 0.3));
         }
       `}</style>
     </div>

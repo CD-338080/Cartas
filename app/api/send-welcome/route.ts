@@ -14,13 +14,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'BOT_TOKEN not configured' }, { status: 500 });
     }
     
-    // Create a private access welcome message
-    const welcomeMessage = `🤫 *PRIVATE ACCESS ONLY*\n\n` +
-      `🔐 This project is used by elite private traders.\n` +
-      `It is not open to the public and requires an exclusive invitation.\n\n` +
-      `🎟️ You've been invited.\n\n` +
-      `🎁 Claim your $25 USDT welcome bonus now and start earning daily rewards.\n\n` +
-      `⏳ Limited access – don't miss this opportunity.`;
+    // Create a shorter, more engaging welcome message with better emojis
+    const welcomeMessage = `🚀 *Welcome ${telegramName}!* 💰\n\n` +
+      `🎲 *Roll Now & Claim 1 USDT!* 🎲\n\n` +
+      `• 👆 Tap to earn USDT tokens\n` +
+      `• 🔄 Upgrade for faster earnings\n` +
+      `• 💤 Earn passively while away\n` +
+      `• 🎁 Collect daily bonuses\n` +
+      `• 👥 Invite friends for 25 usdt commission\n` +
+      `• 💵 Withdraw to TRC-20 wallet\n\n` +
+      `⚡ *Start rolling now!* ⚡`;
     
     // Send the message using Telegram Bot API
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
