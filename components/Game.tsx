@@ -157,8 +157,8 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     setIsDealing(true);
     triggerHapticFeedback(window);
     
-    // Play dealing sound
-    playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.4 });
+    // Play realistic card dealing sound
+    playSound(SOUND_EFFECTS.CARD_SHUFFLE, { volume: 0.4 });
     
     // Test card calculations
     testCardCalculation();
@@ -182,7 +182,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       setPlayerHand([playerCards[0]]);
       setCardAnimations(prev => ({...prev, player: [true, false]}));
       triggerHapticFeedback(window);
-      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.25 });
     }, 200);
     
     // Deal first card to dealer
@@ -191,7 +191,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       setDealerCompleteHand([dealerCards[0]]);
       setCardAnimations(prev => ({...prev, dealer: [true, false]}));
       triggerHapticFeedback(window);
-      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.25 });
     }, 500);
     
     // Deal second card to player
@@ -199,7 +199,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       setPlayerHand(playerCards);
       setCardAnimations(prev => ({...prev, player: [true, true]}));
       triggerHapticFeedback(window);
-      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.25 });
     }, 800);
     
     // Deal second card to dealer (hidden) - add to complete hand but not visible hand
@@ -208,7 +208,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       // Keep dealerHand as only the first card (visible)
       setCardAnimations(prev => ({...prev, dealer: [true, false]}));
       triggerHapticFeedback(window);
-      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.25 });
     }, 1100);
     
     // Set final state

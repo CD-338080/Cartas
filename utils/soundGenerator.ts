@@ -433,61 +433,136 @@ export class SoundGenerator {
     });
   }
 
-  // Sonido de repartir carta
+  // Sonido de repartir carta - más realista como papel
   playCardDeal(volume: number = 0.4) {
     const context = this.ensureAudioContext();
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
-    const filter = context.createBiquadFilter();
+    
+    // Crear múltiples osciladores para simular el sonido de papel/cartas
+    for (let i = 0; i < 3; i++) {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      const filter = context.createBiquadFilter();
+      const noiseFilter = context.createBiquadFilter();
 
-    oscillator.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(context.destination);
+      oscillator.connect(filter);
+      filter.connect(noiseFilter);
+      noiseFilter.connect(gainNode);
+      gainNode.connect(context.destination);
 
-    // Configurar filtro para sonido de carta
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1500, context.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(800, context.currentTime + 0.2);
+      // Configurar filtro principal para sonido de papel
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(800 + i * 100, context.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(300 + i * 50, context.currentTime + 0.15);
 
-    oscillator.frequency.setValueAtTime(200, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(150, context.currentTime + 0.2);
-    oscillator.type = 'sawtooth';
+      // Filtro adicional para simular ruido de papel
+      noiseFilter.type = 'highpass';
+      noiseFilter.frequency.setValueAtTime(100 + i * 20, context.currentTime);
 
-    gainNode.gain.setValueAtTime(0, context.currentTime);
-    gainNode.gain.linearRampToValueAtTime(volume, context.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
+      // Frecuencias más bajas para simular el sonido de cartas reales
+      oscillator.frequency.setValueAtTime(80 + i * 15, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(60 + i * 10, context.currentTime + 0.15);
+      oscillator.type = 'triangle'; // Sonido más suave como papel
 
-    oscillator.start(context.currentTime);
-    oscillator.stop(context.currentTime + 0.2);
+      // Envelope más natural para simular el movimiento de la carta
+      gainNode.gain.setValueAtTime(0, context.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume * (0.8 - i * 0.2), context.currentTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+
+      oscillator.start(context.currentTime + i * 0.01);
+      oscillator.stop(context.currentTime + 0.15 + i * 0.01);
+    }
+
+    // Agregar un pequeño "swish" al final para simular el deslizamiento
+    setTimeout(() => {
+      const swishOsc = context.createOscillator();
+      const swishGain = context.createGain();
+      const swishFilter = context.createBiquadFilter();
+
+      swishOsc.connect(swishFilter);
+      swishFilter.connect(swishGain);
+      swishGain.connect(context.destination);
+
+      swishFilter.type = 'bandpass';
+      swishFilter.frequency.setValueAtTime(600, context.currentTime);
+      swishFilter.Q.setValueAtTime(3, context.currentTime);
+
+      swishOsc.frequency.setValueAtTime(400, context.currentTime);
+      swishOsc.frequency.exponentialRampToValueAtTime(200, context.currentTime + 0.1);
+      swishOsc.type = 'sine';
+
+      swishGain.gain.setValueAtTime(0, context.currentTime);
+      swishGain.gain.linearRampToValueAtTime(volume * 0.3, context.currentTime + 0.01);
+      swishGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+
+      swishOsc.start(context.currentTime);
+      swishOsc.stop(context.currentTime + 0.1);
+    }, 50);
   }
 
-  // Sonido de voltear carta
+  // Sonido de voltear carta - más realista como papel
   playCardFlip(volume: number = 0.5) {
     const context = this.ensureAudioContext();
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
-    const filter = context.createBiquadFilter();
+    
+    // Crear múltiples capas para simular el sonido de voltear una carta
+    for (let i = 0; i < 2; i++) {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      const filter = context.createBiquadFilter();
+      const noiseFilter = context.createBiquadFilter();
 
-    oscillator.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(context.destination);
+      oscillator.connect(filter);
+      filter.connect(noiseFilter);
+      noiseFilter.connect(gainNode);
+      gainNode.connect(context.destination);
 
-    // Configurar filtro para sonido de volteo
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(800, context.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(1200, context.currentTime + 0.1);
-    filter.Q.setValueAtTime(5, context.currentTime);
+      // Configurar filtro principal para sonido de papel volteándose
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(600 + i * 200, context.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(400 + i * 100, context.currentTime + 0.12);
 
-    oscillator.frequency.setValueAtTime(400, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(600, context.currentTime + 0.1);
-    oscillator.type = 'square';
+      // Filtro adicional para simular el roce del papel
+      noiseFilter.type = 'highpass';
+      noiseFilter.frequency.setValueAtTime(150 + i * 50, context.currentTime);
 
-    gainNode.gain.setValueAtTime(0, context.currentTime);
-    gainNode.gain.linearRampToValueAtTime(volume, context.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+      // Frecuencias más naturales para simular el volteo
+      oscillator.frequency.setValueAtTime(120 + i * 30, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(80 + i * 20, context.currentTime + 0.12);
+      oscillator.type = 'triangle'; // Sonido más suave
 
-    oscillator.start(context.currentTime);
-    oscillator.stop(context.currentTime + 0.1);
+      // Envelope que simula el movimiento de volteo
+      gainNode.gain.setValueAtTime(0, context.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume * (0.9 - i * 0.3), context.currentTime + 0.03);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.12);
+
+      oscillator.start(context.currentTime + i * 0.02);
+      oscillator.stop(context.currentTime + 0.12 + i * 0.02);
+    }
+
+    // Agregar un "snap" sutil al final para simular la carta asentándose
+    setTimeout(() => {
+      const snapOsc = context.createOscillator();
+      const snapGain = context.createGain();
+      const snapFilter = context.createBiquadFilter();
+
+      snapOsc.connect(snapFilter);
+      snapFilter.connect(snapGain);
+      snapGain.connect(context.destination);
+
+      snapFilter.type = 'bandpass';
+      snapFilter.frequency.setValueAtTime(800, context.currentTime);
+      snapFilter.Q.setValueAtTime(4, context.currentTime);
+
+      snapOsc.frequency.setValueAtTime(300, context.currentTime);
+      snapOsc.frequency.exponentialRampToValueAtTime(200, context.currentTime + 0.08);
+      snapOsc.type = 'sine';
+
+      snapGain.gain.setValueAtTime(0, context.currentTime);
+      snapGain.gain.linearRampToValueAtTime(volume * 0.4, context.currentTime + 0.01);
+      snapGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.08);
+
+      snapOsc.start(context.currentTime);
+      snapOsc.stop(context.currentTime + 0.08);
+    }, 80);
   }
 
   // Sonido de ficha de casino
@@ -520,6 +595,72 @@ export class SoundGenerator {
       oscillator.start(context.currentTime + i * 0.05);
       oscillator.stop(context.currentTime + 0.3 + i * 0.05);
     }
+  }
+
+  // Sonido de cartas reales - roce de papel
+  playCardShuffle(volume: number = 0.5) {
+    const context = this.ensureAudioContext();
+    
+    // Crear múltiples capas para simular el sonido de cartas reales
+    for (let i = 0; i < 4; i++) {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      const filter = context.createBiquadFilter();
+      const noiseFilter = context.createBiquadFilter();
+
+      oscillator.connect(filter);
+      filter.connect(noiseFilter);
+      noiseFilter.connect(gainNode);
+      gainNode.connect(context.destination);
+
+      // Configurar filtro principal para sonido de papel
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(500 + i * 80, context.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(200 + i * 40, context.currentTime + 0.2);
+
+      // Filtro adicional para simular el roce del papel
+      noiseFilter.type = 'highpass';
+      noiseFilter.frequency.setValueAtTime(80 + i * 15, context.currentTime);
+
+      // Frecuencias muy bajas para simular el sonido de cartas reales
+      oscillator.frequency.setValueAtTime(60 + i * 10, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(40 + i * 8, context.currentTime + 0.2);
+      oscillator.type = 'triangle'; // Sonido más suave y natural
+
+      // Envelope que simula el movimiento natural de las cartas
+      gainNode.gain.setValueAtTime(0, context.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume * (0.7 - i * 0.15), context.currentTime + 0.03);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
+
+      oscillator.start(context.currentTime + i * 0.02);
+      oscillator.stop(context.currentTime + 0.2 + i * 0.02);
+    }
+
+    // Agregar un "thump" sutil al final para simular las cartas asentándose
+    setTimeout(() => {
+      const thumpOsc = context.createOscillator();
+      const thumpGain = context.createGain();
+      const thumpFilter = context.createBiquadFilter();
+
+      thumpOsc.connect(thumpFilter);
+      thumpFilter.connect(thumpGain);
+      thumpGain.connect(context.destination);
+
+      thumpFilter.type = 'lowpass';
+      thumpFilter.frequency.setValueAtTime(300, context.currentTime);
+      thumpFilter.frequency.exponentialRampToValueAtTime(150, context.currentTime + 0.15);
+
+      thumpOsc.frequency.setValueAtTime(100, context.currentTime);
+      thumpOsc.frequency.exponentialRampToValueAtTime(60, context.currentTime + 0.15);
+      thumpOsc.type = 'sine';
+
+      thumpGain.gain.setValueAtTime(0, context.currentTime);
+      thumpGain.gain.linearRampToValueAtTime(volume * 0.5, context.currentTime + 0.01);
+      thumpGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+
+      thumpOsc.start(context.currentTime);
+      thumpOsc.stop(context.currentTime + 0.15);
+    }, 150);
   }
 }
 

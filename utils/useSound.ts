@@ -86,6 +86,9 @@ export const useSound = () => {
       case SOUND_EFFECTS.CHIP_SOUND:
         soundGenerator.playChipSound(volume);
         break;
+      case SOUND_EFFECTS.CARD_SHUFFLE:
+        soundGenerator.playCardShuffle(volume);
+        break;
       default:
         soundGenerator.playButtonClick(volume);
         break;
@@ -152,6 +155,7 @@ export const SOUND_EFFECTS = {
   CARD_DEAL: 'card-deal',
   CARD_FLIP: 'card-flip',
   CHIP_SOUND: 'chip-sound',
+  CARD_SHUFFLE: 'card-shuffle',
   
   // Background music
   BACKGROUND_MUSIC: 'background-music',
