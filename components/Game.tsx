@@ -29,6 +29,7 @@ import TopInfoSection from '@/components/TopInfoSection';
 import { LEVELS } from '@/utils/consts';
 import { triggerHapticFeedback } from '@/utils/ui';
 import Card from '@/components/Card';
+import { useSound, SOUND_EFFECTS } from '@/utils/useSound';
 
 interface GameProps {
   currentView: string;
@@ -43,6 +44,7 @@ interface CardType {
 type GameState = 'betting' | 'playing' | 'dealer' | 'result';
 
 export default function Game({ currentView, setCurrentView }: GameProps) {
+  const { playSound } = useSound();
   const [gameState, setGameState] = useState<GameState>('betting');
   const [playerHand, setPlayerHand] = useState<CardType[]>([]);
   const [dealerHand, setDealerHand] = useState<CardType[]>([]);
@@ -155,6 +157,9 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     setIsDealing(true);
     triggerHapticFeedback(window);
     
+    // Play dealing sound
+    playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.4 });
+    
     // Test card calculations
     testCardCalculation();
     
@@ -177,6 +182,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       setPlayerHand([playerCards[0]]);
       setCardAnimations(prev => ({...prev, player: [true, false]}));
       triggerHapticFeedback(window);
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
     }, 200);
     
     // Deal first card to dealer
@@ -185,6 +191,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       setDealerCompleteHand([dealerCards[0]]);
       setCardAnimations(prev => ({...prev, dealer: [true, false]}));
       triggerHapticFeedback(window);
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
     }, 500);
     
     // Deal second card to player
@@ -192,6 +199,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       setPlayerHand(playerCards);
       setCardAnimations(prev => ({...prev, player: [true, true]}));
       triggerHapticFeedback(window);
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
     }, 800);
     
     // Deal second card to dealer (hidden) - add to complete hand but not visible hand
@@ -200,6 +208,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       // Keep dealerHand as only the first card (visible)
       setCardAnimations(prev => ({...prev, dealer: [true, false]}));
       triggerHapticFeedback(window);
+      playSound(SOUND_EFFECTS.CARD_DEAL, { volume: 0.3 });
     }, 1100);
     
     // Set final state
@@ -219,6 +228,8 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     if (gameState !== 'playing' || deck.length === 0) return;
     
     triggerHapticFeedback(window);
+    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
+    
     const newCard = deck[0];
     const newPlayerHand = [...playerHand, newCard];
     const newDeck = deck.slice(1);
@@ -258,6 +269,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     if (gameState !== 'playing') return;
     
     triggerHapticFeedback(window);
+    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
     setGameState('dealer');
     playDealerTurn();
   };
@@ -276,6 +288,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
         ...prev,
         dealer: prev.dealer.map(() => true)
       }));
+      playSound(SOUND_EFFECTS.CARD_FLIP, { volume: 0.5 });
     }, 500);
     
     const dealerTurn = () => {
@@ -299,6 +312,9 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
       currentDeck = currentDeck.slice(1);
       
       console.log('Dealer hits, new card:', newCard.value);
+      
+      // Play dealer hit sound
+      playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.3 });
       
       // Show flying card animation for dealer
       setFlyingCard({show: true, card: newCard, target: 'dealer'});
@@ -369,9 +385,17 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
     setShowResult(true);
     setGameState('result');
     
+    // Play appropriate sound based on result
     if (result === 'win') {
+      playSound(SOUND_EFFECTS.ROULETTE_WIN, { volume: 0.7 });
+      playSound(SOUND_EFFECTS.COIN_COLLECT, { volume: 0.6 });
       clickTriggered();
       updateLastClickTimestamp();
+    } else if (result === 'lose') {
+      playSound(SOUND_EFFECTS.ROULETTE_LOSE, { volume: 0.6 });
+    } else {
+      // Draw - play a neutral sound
+      playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
     }
     
     setTimeout(() => {
@@ -382,6 +406,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
   // Play again
   const playAgain = () => {
     triggerHapticFeedback(window);
+    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
     setGameState('betting');
     setPlayerHand([]);
     setDealerHand([]);
@@ -630,6 +655,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                 <button
                   onClick={() => {
                     triggerHapticFeedback(window);
+                    playSound(SOUND_EFFECTS.BUTTON_CLICK, { volume: 0.4 });
                     setCurrentView('airdrop');
                     localStorage.setItem('scrollToTransactions', 'true');
                   }}

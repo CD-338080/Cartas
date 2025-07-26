@@ -432,6 +432,95 @@ export class SoundGenerator {
       oscillator.stop(context.currentTime + index * 0.08 + 0.2);
     });
   }
+
+  // Sonido de repartir carta
+  playCardDeal(volume: number = 0.4) {
+    const context = this.ensureAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    const filter = context.createBiquadFilter();
+
+    oscillator.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(context.destination);
+
+    // Configurar filtro para sonido de carta
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1500, context.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(800, context.currentTime + 0.2);
+
+    oscillator.frequency.setValueAtTime(200, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(150, context.currentTime + 0.2);
+    oscillator.type = 'sawtooth';
+
+    gainNode.gain.setValueAtTime(0, context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(volume, context.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
+
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.2);
+  }
+
+  // Sonido de voltear carta
+  playCardFlip(volume: number = 0.5) {
+    const context = this.ensureAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    const filter = context.createBiquadFilter();
+
+    oscillator.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(context.destination);
+
+    // Configurar filtro para sonido de volteo
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(800, context.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(1200, context.currentTime + 0.1);
+    filter.Q.setValueAtTime(5, context.currentTime);
+
+    oscillator.frequency.setValueAtTime(400, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(600, context.currentTime + 0.1);
+    oscillator.type = 'square';
+
+    gainNode.gain.setValueAtTime(0, context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(volume, context.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.1);
+  }
+
+  // Sonido de ficha de casino
+  playChipSound(volume: number = 0.6) {
+    const context = this.ensureAudioContext();
+    
+    // Crear múltiples osciladores para sonido de ficha
+    for (let i = 0; i < 2; i++) {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      const filter = context.createBiquadFilter();
+
+      oscillator.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(context.destination);
+
+      // Configurar filtro para sonido de ficha
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2000 + i * 500, context.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(500 + i * 100, context.currentTime + 0.3);
+
+      oscillator.frequency.setValueAtTime(300 + i * 100, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(200 + i * 50, context.currentTime + 0.3);
+      oscillator.type = 'triangle';
+
+      gainNode.gain.setValueAtTime(0, context.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume * (0.9 - i * 0.3), context.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+
+      oscillator.start(context.currentTime + i * 0.05);
+      oscillator.stop(context.currentTime + 0.3 + i * 0.05);
+    }
+  }
 }
 
 // Instancia global del generador de sonidos

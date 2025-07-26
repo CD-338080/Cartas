@@ -77,6 +77,15 @@ export const useSound = () => {
       case SOUND_EFFECTS.BACKGROUND_MUSIC:
         soundGenerator.playBackgroundMusic(volume);
         break;
+      case SOUND_EFFECTS.CARD_DEAL:
+        soundGenerator.playCardDeal(volume);
+        break;
+      case SOUND_EFFECTS.CARD_FLIP:
+        soundGenerator.playCardFlip(volume);
+        break;
+      case SOUND_EFFECTS.CHIP_SOUND:
+        soundGenerator.playChipSound(volume);
+        break;
       default:
         soundGenerator.playButtonClick(volume);
         break;
@@ -138,6 +147,11 @@ export const SOUND_EFFECTS = {
   COIN_COLLECT: 'coin-collect',
   LEVEL_UP: 'level-up',
   ENERGY_REFILL: 'energy-refill',
+  
+  // Blackjack specific sounds
+  CARD_DEAL: 'card-deal',
+  CARD_FLIP: 'card-flip',
+  CHIP_SOUND: 'chip-sound',
   
   // Background music
   BACKGROUND_MUSIC: 'background-music',

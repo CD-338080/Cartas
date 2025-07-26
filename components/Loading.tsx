@@ -100,6 +100,7 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showCards, setShowCards] = useState(false);
   const [dealingPhase, setDealingPhase] = useState(0);
+  const welcomeMessageSentRef = useRef(false);
 
   const sendWelcomeMessage = async (telegramId: string, telegramName: string) => {
     try {
@@ -225,8 +226,9 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
 
       initializeState(initialState);
 
-      // Send welcome message if we have the Telegram ID
-      if (telegramId) {
+      // Send welcome message if we have the Telegram ID and haven't sent it yet
+      if (telegramId && !welcomeMessageSentRef.current) {
+        welcomeMessageSentRef.current = true;
         await sendWelcomeMessage(telegramId, telegramName);
       }
       
@@ -240,7 +242,7 @@ export default function Loading({ setIsInitialized, setCurrentView }: LoadingPro
       console.error('Error fetching user data:', error);
       // Handle error (e.g., show error message to user)
     }
-  }, [initializeState, loadingProgress]);
+  }, [initializeState]);
 
   useEffect(() => {
     const parser = new UAParser();
