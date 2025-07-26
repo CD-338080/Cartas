@@ -82,24 +82,7 @@ export default function Airdrop() {
         return () => clearInterval(interval);
     }, []);
 
-    useEffect(() => {
-        fetchOnchainTasks();
-    }, []);
-
-    // Check if we should scroll to transactions section
-    useEffect(() => {
-        const shouldScrollToTransactions = localStorage.getItem('scrollToTransactions') === 'true';
-        if (shouldScrollToTransactions && transactionsRef.current) {
-            // Scroll to transactions section with a slight delay to ensure rendering
-            setTimeout(() => {
-                transactionsRef.current?.scrollIntoView({ behavior: 'smooth' });
-                // Clear the flag
-                localStorage.removeItem('scrollToTransactions');
-            }, 500);
-        }
-    }, []);
-
-    const fetchOnchainTasks = async () => {
+    const fetchOnchainTasks = useCallback(async () => {
         try {
             setIsLoadingTasks(true);
             const response = await fetch(`/api/onchain-tasks?initData=${encodeURIComponent(userTelegramInitData)}`);
@@ -114,7 +97,24 @@ export default function Airdrop() {
         } finally {
             setIsLoadingTasks(false);
         }
-    };
+    }, [userTelegramInitData, showToast]);
+
+    useEffect(() => {
+        fetchOnchainTasks();
+    }, [fetchOnchainTasks]);
+
+    // Check if we should scroll to transactions section
+    useEffect(() => {
+        const shouldScrollToTransactions = localStorage.getItem('scrollToTransactions') === 'true';
+        if (shouldScrollToTransactions && transactionsRef.current) {
+            // Scroll to transactions section with a slight delay to ensure rendering
+            setTimeout(() => {
+                transactionsRef.current?.scrollIntoView({ behavior: 'smooth' });
+                // Clear the flag
+                localStorage.removeItem('scrollToTransactions');
+            }, 500);
+        }
+    }, []);
 
     const handleWalletConnection = useCallback(async (address: string) => {
         setIsProcessingWallet(true);

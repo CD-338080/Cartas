@@ -20,6 +20,7 @@ import { Task, TaskType } from '@prisma/client';
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from 'next/image';
 import IceCube from '@/icons/IceCube';
 import { formatNumber } from '@/utils/ui';
 import { imageMap } from '@/images';
@@ -114,7 +115,7 @@ export default function AdminTasks() {
 
     useEffect(() => {
         fetchTasks();
-    }, []);
+    }, [fetchTasks]);
 
     const onSubmit = async (data: TaskFormData) => {
         try {

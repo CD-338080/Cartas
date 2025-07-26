@@ -560,7 +560,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                   {/* Game Objective */}
                   <div className="bg-white/5 rounded-lg p-4">
                     <h3 className="text-lg font-bold text-[#f0b90b] mb-2">🎯 Objective</h3>
-                    <p>Get as close to <span className="text-[#90ef89] font-bold">21</span> as possible without going over. Beat the dealer's hand to win!</p>
+                    <p>Get as close to <span className="text-[#90ef89] font-bold">21</span> as possible without going over. Beat the dealer&apos;s hand to win!</p>
                   </div>
 
                   {/* Card Values */}
@@ -579,11 +579,11 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-start space-x-2">
                         <span className="text-[#90ef89] font-bold">1.</span>
-                        <span>Click <span className="text-[#90ef89] font-bold">"Deal Cards"</span> to start</span>
+                        <span>Click <span className="text-[#90ef89] font-bold">&quot;Deal Cards&quot;</span> to start</span>
                       </div>
                       <div className="flex items-start space-x-2">
                         <span className="text-[#90ef89] font-bold">2.</span>
-                        <span>Choose <span className="text-[#90ef89] font-bold">"Hit"</span> to draw a card or <span className="text-red-400 font-bold">"Stand"</span> to keep your hand</span>
+                        <span>Choose <span className="text-[#90ef89] font-bold">&quot;Hit&quot;</span> to draw a card or <span className="text-red-400 font-bold">&quot;Stand&quot;</span> to keep your hand</span>
                       </div>
                       <div className="flex items-start space-x-2">
                         <span className="text-[#90ef89] font-bold">3.</span>
@@ -598,7 +598,7 @@ export default function Game({ currentView, setCurrentView }: GameProps) {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-start space-x-2">
                         <span className="text-[#90ef89]">✅</span>
-                        <span>Your hand is closer to 21 than dealer's</span>
+                        <span>Your hand is closer to 21 than dealer&apos;s</span>
                       </div>
                       <div className="flex items-start space-x-2">
                         <span className="text-[#90ef89]">✅</span>
